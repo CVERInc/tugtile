@@ -2,29 +2,30 @@
 
 # tugtile
 
-**Markdown-backed kanban board for [Obsidian](https://obsidian.md). Tug tiles to reorder.**
+**A card table for your Markdown notes in [Obsidian](https://obsidian.md) — tug tiles to reorder.**
 
-tugtile turns any Markdown note into a kanban board — lanes are `## ` headings, cards
-(we call them **tiles**) are `- [ ]` task-list items. Your board *is* a plain `.md` file:
-drag a tile and the file updates; edit the file and the board updates. Nothing is locked
-inside a database or a proprietary format.
+tugtile lays a Markdown note out like cards on a table — every `- [ ]` task-list item
+becomes a **tile** you can pick up and tug somewhere better, and `## ` headings are the
+**lanes** the tiles line up in. Your table *is* a plain `.md` file: tug a tile and the
+file updates; edit the file and the board updates. Nothing is locked inside a database
+or a proprietary format.
 
 ## Coming from obsidian-kanban?
 
-Your boards just open. tugtile reads the same frontmatter, the same `- [ ]` cards, the
-same `%% kanban:settings %%` block and the same `***` archive as the (GPL,
-now-unmaintained) [obsidian-kanban](https://github.com/mgmeyers/obsidian-kanban), and
-keeps the original markers in place until you choose to upgrade a board — so going back
-stays possible. What you gain on top: undo / redo, an editor built for phones and iPads,
-and active maintenance. Written from scratch (clean-room), **MIT**.
+tugtile also speaks fluent kanban. Boards from the (GPL, now-unmaintained)
+[obsidian-kanban](https://github.com/mgmeyers/obsidian-kanban) just open — same
+frontmatter, same `- [ ]` cards, same `%% kanban:settings %%` block, same `***` archive —
+and tugtile keeps the original markers in place until you choose to upgrade a board, so
+going back stays possible. What you gain on top: undo / redo, an editor built for phones
+and iPads, and active maintenance. Written from scratch (clean-room), **MIT**.
 
 ## Highlights
 
 - **Your data stays Markdown** — human-readable, diff-friendly, portable. Board and
-  table views over the same note, plus a raw-editor button when you want the text itself.
-- **Built-in undo / redo** — board actions are reversible.
+  Table views over the same note, plus a raw-editor button when you want the text itself.
+- **Built-in undo / redo** — every move at the table is reversible.
 - **An editor that survives phones** — two-row toolbar, virtual-keyboard-aware layout on
-  iOS/iPad; drag-reorder lanes & tiles, dates/times, tags, archive.
+  iOS/iPad; tug lanes & tiles to reorder, dates/times, tags, stash (archive).
 - **CJK-first, concretely** — re-highlighting waits while your IME is composing, so CJK
   input is never interrupted; `#tags` accept CJK; sorting is locale-aware.
 - **No network, no telemetry** — your boards never leave your vault.
