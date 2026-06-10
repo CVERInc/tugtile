@@ -17,7 +17,11 @@ tugtile's native tongue is tiles — but it also speaks fluent kanban. Boards fr
 frontmatter, same `- [ ]` cards, same `%% kanban:settings %%` block, same `***` archive —
 and tugtile keeps the original markers in place until you choose to upgrade a board, so
 going back stays possible. What you gain on top: undo / redo, an editor built for phones
-and iPads, and active maintenance. Written from scratch (clean-room), **MIT**.
+and iPads, and active maintenance.
+
+tugtile actually started life as plugins *for* obsidian-kanban — until rebuilding the
+whole table was easier than patching someone else's. Written from scratch (clean-room),
+**MIT**.
 
 ## Highlights
 
