@@ -1,3 +1,5 @@
+**English** · [日本語](README.ja.md) · [한국어](README.ko.md) · [繁體中文](README.zh-TW.md)
+
 # tugtile
 
 **Markdown-backed kanban board for [Obsidian](https://obsidian.md). Tug tiles to reorder.**
