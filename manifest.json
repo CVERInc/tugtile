@@ -1,0 +1,10 @@
+{
+  "id": "tugtile",
+  "name": "tugtile",
+  "version": "0.0.197",
+  "minAppVersion": "1.4.0",
+  "description": "Markdown-backed kanban board — MIT, CJK-friendly. Tug tiles to reorder.",
+  "author": "CVER Inc.",
+  "authorUrl": "https://cver.net",
+  "isDesktopOnly": false
+}
