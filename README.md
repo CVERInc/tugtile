@@ -12,7 +12,7 @@ or a proprietary format.
 
 ## Coming from obsidian-kanban?
 
-tugtile also speaks fluent kanban. Boards from the (GPL, now-unmaintained)
+tugtile's native tongue is tiles — but it also speaks fluent kanban. Boards from the (GPL, now-unmaintained)
 [obsidian-kanban](https://github.com/mgmeyers/obsidian-kanban) just open — same
 frontmatter, same `- [ ]` cards, same `%% kanban:settings %%` block, same `***` archive —
 and tugtile keeps the original markers in place until you choose to upgrade a board, so

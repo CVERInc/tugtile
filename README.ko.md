@@ -12,7 +12,7 @@ tugtile은 Markdown 노트를 테이블 위에 펼친 카드처럼 다룹니다:
 
 ## obsidian-kanban에서 옮겨오시나요?
 
-tugtile은 kanban도 유창하게 합니다. (GPL, 유지보수가 중단된)
+tugtile의 모국어는 타일이지만, kanban도 유창하게 구사합니다. (GPL, 유지보수가 중단된)
 [obsidian-kanban](https://github.com/mgmeyers/obsidian-kanban)의 보드가 그대로 열립니다:
 같은 frontmatter, 같은 `- [ ]` 카드, 같은 `%% kanban:settings %%` 블록, 같은 `***`
 아카이브. 그리고 "업그레이드"를 직접 선택하기 전까지 원래 마커를 그대로 유지합니다.
