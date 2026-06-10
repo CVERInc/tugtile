@@ -9,10 +9,25 @@ tugtile turns any Markdown note into a kanban board — lanes are `## ` headings
 drag a tile and the file updates; edit the file and the board updates. Nothing is locked
 inside a database or a proprietary format.
 
-Clean-room, **MIT**, CJK-friendly. Format-compatible with the (GPL, now-unmaintained)
-[obsidian-kanban](https://github.com/mgmeyers/obsidian-kanban) — same frontmatter, same
-`- [ ]` cards, same `%% kanban:settings %%` block, same `***` archive — so it reads and
-writes your existing boards.
+## Coming from obsidian-kanban?
+
+Your boards just open. tugtile reads the same frontmatter, the same `- [ ]` cards, the
+same `%% kanban:settings %%` block and the same `***` archive as the (GPL,
+now-unmaintained) [obsidian-kanban](https://github.com/mgmeyers/obsidian-kanban), and
+keeps the original markers in place until you choose to upgrade a board — so going back
+stays possible. What you gain on top: undo / redo, an editor built for phones and iPads,
+and active maintenance. Written from scratch (clean-room), **MIT**.
+
+## Highlights
+
+- **Your data stays Markdown** — human-readable, diff-friendly, portable. Board and
+  table views over the same note, plus a raw-editor button when you want the text itself.
+- **Built-in undo / redo** — board actions are reversible.
+- **An editor that survives phones** — two-row toolbar, virtual-keyboard-aware layout on
+  iOS/iPad; drag-reorder lanes & tiles, dates/times, tags, archive.
+- **CJK-first, concretely** — re-highlighting waits while your IME is composing, so CJK
+  input is never interrupted; `#tags` accept CJK; sorting is locale-aware.
+- **No network, no telemetry** — your boards never leave your vault.
 
 ## Install
 
@@ -20,13 +35,6 @@ writes your existing boards.
   `manifest.json`, and `styles.css` into your vault's `.obsidian/plugins/tugtile/` folder,
   then enable **tugtile** in Settings → Community plugins.
 - **[BRAT](https://github.com/TfTHacker/obsidian42-brat):** add the beta plugin `CVERInc/tugtile`.
-
-## Highlights
-
-- **Your data stays Markdown** — human-readable, diff-friendly, portable.
-- Built-in **undo / redo** (kanban can't).
-- Drag-reorder lanes & cards, dates/times, tags, archive, board / table views.
-- **CJK-first**, works on desktop and mobile / iPad.
 
 Sister plugin: **[marktile](https://github.com/CVERInc/marktile)** — the same editor as a
 standalone Markdown pane.
