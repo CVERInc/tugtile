@@ -1,4 +1,8 @@
 /* tugtile — markdown kanban (prototype, read-only renderer) */
+/* Continuous-curvature (squircle) corners. corner-shape needs a non-zero border-radius to act and is
+   ignored by non-Chromium engines (Safari/WebKit, Firefox mid-2026), so it's pure progressive enhancement.
+   A custom property is inheritable; scope the token here next to the plugin's own surfaces. */
+:root { --corner: squircle; }
 .tugtile {
   height: 100%;
   padding: 0;
@@ -45,6 +49,7 @@ body.is-phone .workspace-leaf-content[data-type="tugtile-board"] .view-content {
   display: inline-flex; align-items: center; gap: 5px;
   color: var(--text-faint); font-weight: var(--font-normal);
   cursor: pointer; border-radius: var(--radius-s); padding: 2px 6px;
+  corner-shape: var(--corner);   /* progressive enhancement: Chromium-only mid-2026; other engines keep the border-radius arc — zero regression */
 }
 .tugtile-brand:hover { background: var(--background-modifier-hover); color: var(--text-muted); }
 .tugtile-lock-icon { display: inline-flex; }
@@ -78,6 +83,7 @@ body.is-phone .workspace-leaf-content[data-type="tugtile-board"] .view-content {
   flex-direction: column;
   background: var(--background-secondary);
   border-radius: var(--radius-m);
+  corner-shape: var(--corner);   /* progressive enhancement: Chromium-only mid-2026; other engines keep the border-radius arc — zero regression */
   padding: 8px;
   overflow: hidden;         /* Cleanly clips content into the changing lane width during collapse/expand (dragging uses a clone on body and is unaffected) */
   --tg-d1: 0.26s;           /* Stage 1: lane narrows + horizontal title tucks into the chevron (collapse) / widens + title grows back (expand) */
@@ -128,6 +134,7 @@ body.is-phone .workspace-leaf-content[data-type="tugtile-board"] .view-content {
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-m);
+  corner-shape: var(--corner);   /* progressive enhancement: Chromium-only mid-2026; other engines keep the border-radius arc — zero regression */
   padding: 8px;
   cursor: grab;
 }
@@ -168,6 +175,7 @@ body.is-phone .workspace-leaf-content[data-type="tugtile-board"] .view-content {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   border-radius: var(--radius-s);
+  corner-shape: var(--corner);   /* progressive enhancement: Chromium-only mid-2026; other engines keep the border-radius arc — zero regression */
   font-weight: 700;
   line-height: 1.25;
 }
@@ -213,6 +221,7 @@ body.is-phone .workspace-leaf-content[data-type="tugtile-board"] .view-content {
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-m);
+  corner-shape: var(--corner);   /* progressive enhancement: Chromium-only mid-2026; other engines keep the border-radius arc — zero regression */
   box-shadow: var(--shadow-l);
   padding: 8px;
   user-select: none;
@@ -242,6 +251,7 @@ body.is-phone .workspace-leaf-content[data-type="tugtile-board"] .view-content {
 .tugtile__popup-d {
   cursor: pointer;
   border-radius: var(--radius-s);
+  corner-shape: var(--corner);   /* progressive enhancement: Chromium-only mid-2026; other engines keep the border-radius arc — zero regression */
   padding: 3px 0;
   line-height: 1.4;
 }
@@ -256,6 +266,7 @@ body.is-phone .workspace-leaf-content[data-type="tugtile-board"] .view-content {
   cursor: pointer;
   padding: 4px 16px;
   border-radius: var(--radius-s);
+  corner-shape: var(--corner);   /* progressive enhancement: Chromium-only mid-2026; other engines keep the border-radius arc — zero regression */
 }
 .tugtile__popup-t:hover { background: var(--background-modifier-hover); }
 /* Tag chips at the bottom of the card (when move-tags-to-card-footer is enabled) */
@@ -306,6 +317,7 @@ body.is-phone .workspace-leaf-content[data-type="tugtile-board"] .view-content {
   background: transparent;
   border: 1px dashed var(--background-modifier-border);
   border-radius: var(--radius-m);
+  corner-shape: var(--corner);   /* progressive enhancement: Chromium-only mid-2026; other engines keep the border-radius arc — zero regression */
   color: var(--text-muted);
   padding: 8px;              /* Match card padding and the add-lane button (consistent 8px rhythm); left-aligned "+" lines up with the card number chip */
   cursor: pointer;
@@ -319,12 +331,14 @@ body.is-phone .workspace-leaf-content[data-type="tugtile-board"] .view-content {
   min-height: 4em;
   resize: vertical;
   border-radius: var(--radius-m);
+  corner-shape: var(--corner);   /* progressive enhancement: Chromium-only mid-2026; other engines keep the border-radius arc — zero regression */
 }
 .tugtile__add-ok {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   border: none;
   border-radius: var(--radius-s);
+  corner-shape: var(--corner);   /* progressive enhancement: Chromium-only mid-2026; other engines keep the border-radius arc — zero regression */
   padding: 4px 12px;
   cursor: pointer;
 }
@@ -439,6 +453,7 @@ body.is-phone .tugtile-prompt-modal { margin-top: calc(env(safe-area-inset-top) 
   background: var(--background-modifier-form-field);
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-m);
+  corner-shape: var(--corner);   /* progressive enhancement: Chromium-only mid-2026; other engines keep the border-radius arc — zero regression */
   overflow: hidden;   /* Clip the input to the rounded box so it can never poke out of the corners */
 }
 .tugtile-prompt-field:focus-within { border-color: var(--interactive-accent); }
@@ -498,6 +513,7 @@ input.tugtile-prompt-input:active {
   position: relative;
   width: 40px; height: 40px;
   border: none; border-radius: var(--radius-m);
+  corner-shape: var(--corner);   /* progressive enhancement: Chromium-only mid-2026; other engines keep the border-radius arc — zero regression */
   background: transparent; color: var(--text-muted);
   cursor: pointer;
 }
@@ -543,6 +559,7 @@ body.is-phone .tugtile-ed-bar { padding-top: 6px; padding-bottom: 4px; }
 .tugtile-ed-find-i {
   flex: 1; min-width: 80px;
   font-size: 16px; padding: 5px 8px; border-radius: var(--radius-s);   /* 16px avoids iOS focus-zoom */
+  corner-shape: var(--corner);   /* progressive enhancement: Chromium-only mid-2026; other engines keep the border-radius arc — zero regression */
 }
 .tugtile-ed-find-n { flex: 0 0 auto; color: var(--text-muted); font-size: 0.85em; min-width: 1.6em; text-align: center; }
 /* .tugtile-ed-find-b inherits everything from .tugtile-iconbtn */
@@ -610,6 +627,7 @@ body.is-phone .tugtile-ed-bar { padding-top: 6px; padding-bottom: 4px; }
 .marktile-toc-item--chosen { box-shadow: inset 0 0 0 2px var(--interactive-accent); }        /* the picked row */
 .marktile-toc-item--drag {   /* the row following the finger (re-parented to <body> by fallbackOnBody) */
   opacity: 0.97; background: var(--background-secondary); border-radius: 6px;
+  corner-shape: var(--corner);   /* progressive enhancement: Chromium-only mid-2026; other engines keep the border-radius arc — zero regression */
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4); cursor: grabbing;
   rotate: 3deg; scale: 1.03;   /* "picked up" tilt — standalone props (NOT transform) so Sortable's drag translation isn't overwritten */
 }
@@ -659,6 +677,7 @@ body.is-phone .tugtile-ed-rich { padding-bottom: 55vh; }
   min-height: 4em;
   resize: vertical;
   border-radius: var(--radius-s);
+  corner-shape: var(--corner);   /* progressive enhancement: Chromium-only mid-2026; other engines keep the border-radius arc — zero regression */
 }
 /* Lane header container */
 .tugtile__lane-title {
@@ -680,6 +699,7 @@ body.is-phone .tugtile-ed-rich { padding-bottom: 55vh; }
   flex: 1;
   font-weight: 700;
   border-radius: var(--radius-s);
+  corner-shape: var(--corner);   /* progressive enhancement: Chromium-only mid-2026; other engines keep the border-radius arc — zero regression */
 }
 /* Responsive board (opt-in, default off): on a narrow pane the horizontal lanes reflow into a single full-width vertical stack — the behaviour of the retired List view, now automatic via a container query. Drag-and-drop/editing logic is shared with the board view. */
 .tugtile--rwd { container-type: inline-size; container-name: tugtileboard; }
@@ -699,6 +719,7 @@ body.is-phone .tugtile-ed-rich { padding-bottom: 55vh; }
 .tugtile-viewcycle {
   display: inline-flex; align-items: center; gap: 5px;
   cursor: pointer; border-radius: var(--radius-s);
+  corner-shape: var(--corner);   /* progressive enhancement: Chromium-only mid-2026; other engines keep the border-radius arc — zero regression */
   padding: 2px 6px;
 }
 .tugtile-viewcycle:hover { background: var(--background-modifier-hover); }
@@ -750,6 +771,7 @@ body.is-phone .tugtile-ed-rich { padding-bottom: 55vh; }
   padding: 12px;
   border: 2px dashed var(--background-modifier-border);
   border-radius: var(--radius-m);
+  corner-shape: var(--corner);   /* progressive enhancement: Chromium-only mid-2026; other engines keep the border-radius arc — zero regression */
   background: var(--background-secondary);
   color: var(--text-muted);
   font-weight: 600;
@@ -763,6 +785,7 @@ body.is-phone .tugtile-ed-rich { padding-bottom: 55vh; }
   width: 1.6em;
   height: 1.6em;
   border-radius: var(--radius-s);
+  corner-shape: var(--corner);   /* progressive enhancement: Chromium-only mid-2026; other engines keep the border-radius arc — zero regression */
   /* Opaque (translucent hover tint composited over the lane bg) so the vertical title retracting INTO the
      chevron during collapse/expand is fully masked — a see-through button would leak that text. */
   background: linear-gradient(var(--background-modifier-hover), var(--background-modifier-hover)), var(--background-secondary);
@@ -863,6 +886,7 @@ body.is-phone .tugtile-ed-rich { padding-bottom: 55vh; }
   padding: 8px;
   border: 1px solid var(--background-modifier-border);
   border-radius: var(--radius-m);
+  corner-shape: var(--corner);   /* progressive enhancement: Chromium-only mid-2026; other engines keep the border-radius arc — zero regression */
 }
 .tugtile-archive-body {
   flex: 1;
@@ -887,6 +911,7 @@ body.is-phone .tugtile-ed-rich { padding-bottom: 55vh; }
   background: transparent;
   border: 1px dashed var(--background-modifier-border);
   border-radius: var(--radius-m);
+  corner-shape: var(--corner);   /* progressive enhancement: Chromium-only mid-2026; other engines keep the border-radius arc — zero regression */
   color: var(--text-muted);
   padding: 8px;
   cursor: pointer;
