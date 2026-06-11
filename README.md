@@ -42,10 +42,12 @@ whole table was easier than patching someone else's. Written from scratch (clean
 
 ### Install
 
+- **Community plugins (recommended):** in Obsidian, open Settings → Community plugins →
+  Browse, search for **tugtile**, then Install and Enable.
 - **Manual:** from the [latest release](../../releases/latest), download `main.js`,
   `manifest.json`, and `styles.css` into your vault's `.obsidian/plugins/tugtile/` folder,
   then enable **tugtile** in Settings → Community plugins.
-- **[BRAT](https://github.com/TfTHacker/obsidian42-brat):** add the beta plugin `CVERInc/tugtile`.
+- **[BRAT](https://github.com/TfTHacker/obsidian42-brat) (beta builds):** add `CVERInc/tugtile`.
 
 Sister plugin: **[marktile](https://github.com/CVERInc/marktile)** — the same editor as a
 standalone Markdown pane.
@@ -91,10 +93,12 @@ tugtile の前身は、obsidian-kanban のために書いた plugin の山（plu
 
 ### インストール
 
+- **コミュニティプラグイン（推奨）：** 設定 → コミュニティプラグイン → 「閲覧」で
+  **tugtile** を検索し、インストールして有効化。
 - **手動：** [最新リリース](../../releases/latest) から `main.js`・`manifest.json`・
   `styles.css` を vault の `.obsidian/plugins/tugtile/` に置き、設定 → コミュニティプラグイン
   で **tugtile** を有効化。
-- **[BRAT](https://github.com/TfTHacker/obsidian42-brat)：** ベータプラグイン `CVERInc/tugtile` を追加。
+- **[BRAT](https://github.com/TfTHacker/obsidian42-brat)（ベータ版）：** `CVERInc/tugtile` を追加。
 
 姉妹プラグイン：**[marktile](https://github.com/CVERInc/marktile)**：同じエディタを、独立した
 Markdown ペインとして。
@@ -141,10 +145,12 @@ tugtile은 원래 obsidian-kanban을 위해 쓴 플러그인들(플러그인의 
 
 ### 설치
 
+- **커뮤니티 플러그인(권장):** 설정 → 커뮤니티 플러그인 → 「탐색」에서 **tugtile**을
+  검색해 설치하고 활성화하세요.
 - **수동:** [최신 릴리스](../../releases/latest)에서 `main.js`, `manifest.json`,
   `styles.css`를 vault의 `.obsidian/plugins/tugtile/`에 넣고, 설정 → 커뮤니티 플러그인에서
   **tugtile**을 활성화하세요.
-- **[BRAT](https://github.com/TfTHacker/obsidian42-brat):** 베타 플러그인 `CVERInc/tugtile` 추가.
+- **[BRAT](https://github.com/TfTHacker/obsidian42-brat)(베타 빌드):** `CVERInc/tugtile` 추가.
 
 자매 플러그인: **[marktile](https://github.com/CVERInc/marktile)**: 같은 에디터를 독립된
 Markdown 패널로.
@@ -186,10 +192,12 @@ tugtile 的前身正是幫 obsidian-kanban 寫的一堆 plugin（plugin 的 plug
 
 ### 安裝
 
+- **社群外掛（推薦）：** 在 Obsidian 開 設定 → 社群外掛 → 瀏覽，搜尋 **tugtile**，
+  安裝後啟用。
 - **手動：** 從[最新 release](../../releases/latest) 下載 `main.js`、`manifest.json`、
   `styles.css` 放進 vault 的 `.obsidian/plugins/tugtile/`，然後在 設定 → 社群外掛 啟用
   **tugtile**。
-- **[BRAT](https://github.com/TfTHacker/obsidian42-brat)：** 加入 beta 外掛 `CVERInc/tugtile`。
+- **[BRAT](https://github.com/TfTHacker/obsidian42-brat)（beta 版）：** 加入 `CVERInc/tugtile`。
 
 姊妹外掛：**[marktile](https://github.com/CVERInc/marktile)**：同一顆編輯器，作為獨立的
 Markdown 分頁。
