@@ -2710,7 +2710,9 @@ module.exports = class TugtilePlugin extends Plugin {
     this.app.workspace.getLeavesOfType(VIEW_TYPE).forEach((l) => { if (l.view && l.view.render) l.view.render(); });
   }
   onunload() {
-    this._unloaded = true; clearTimeout(this._sweepT); this.app.workspace.detachLeavesOfType(VIEW_TYPE);
+    // Per Obsidian plugin guidelines: do NOT detachLeavesOfType here — Obsidian reinitializes
+    // open leaves at their original position on update; detaching ourselves causes problems.
+    this._unloaded = true; clearTimeout(this._sweepT);
     const a = this._navActions();   // Restore the native chevron icons if we'd swapped them for undo/redo
     if (a) { if (a.back && a.back.dataset.tugtileNav) { this._swapNavIcon(a.back, 'chevron-left'); delete a.back.dataset.tugtileNav; } if (a.fwd && a.fwd.dataset.tugtileNav) { this._swapNavIcon(a.fwd, 'chevron-right'); delete a.fwd.dataset.tugtileNav; } }
   }
