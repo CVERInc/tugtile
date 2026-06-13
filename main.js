@@ -39,6 +39,10 @@ function t(key, ...args) {
 
 const LANE_WIDTHS = { narrow: 260, medium: 300, wide: 360 };   // Lane width presets (px)
 const TABLE_PADS = { narrow: 5, medium: 9, wide: 14 };          // Table row vertical-padding presets (px) — "table density"
+// Shared touch-drag tuning for EVERY draggable (lanes + tiles): long-press to start (delay), and tolerate a little
+// finger tremor first (touchStartThreshold) so a tap/long-press to rename a lane isn't hijacked into a drag.
+// One source → lanes and tiles always feel the same. (TOC drag in the editor core carries its own copy.)
+const DRAG_TOUCH = { delay: 180, delayOnTouchOnly: true, touchStartThreshold: 8, forceFallback: true, fallbackOnBody: true, fallbackTolerance: 4 };
 // Full-screen editor toolbar buttons (order + groups). 'sep' marks a group divider. Each can be toggled in settings (default all on); settings show the glyph as the label.
 // build injects packages/core/editor-core.js (the shared editor core) at the next line:
 /* tile-family shared editor core — the SINGLE source of the editor engine used by BOTH plugins.
@@ -118,6 +122,22 @@ function listContinuation(v, s) {
   return { text: v.slice(0, s) + '\n' + prefix + v.slice(s), caret: s + 1 + prefix.length };               // continue the list
 }
 
+// Re-sequence contiguous top-level ordered-list blocks so they read 1,2,3… A markdown renderer renumbers
+// regardless of the literal digits, but marktile SHOWS the markers — so deleting "2." should make the old
+// "3." become "2.". Pure (unit-testable) and, for single-digit lists, caret-stable (a renumbered marker is
+// the same width). A blank or non-ordered line ends a block; indented/nested ordered lists are left alone.
+// Returns the SAME string when already sequential, so callers can no-op on identity (the common case).
+function renumberLists(v) {
+  const lines = v.split('\n');
+  let n = 0, changed = false;
+  for (let i = 0; i < lines.length; i++) {
+    const m = /^(\d+)([.)])(\s)/.exec(lines[i]);
+    if (m) { n++; const want = n + m[2] + m[3]; if (m[0] !== want) { lines[i] = want + lines[i].slice(m[0].length); changed = true; } }
+    else n = 0;   // blank / non-ordered line breaks the block → next ordered run restarts at 1
+  }
+  return changed ? lines.join('\n') : v;
+}
+
 // Tab inserts a literal tab at the caret (replacing any selection); Shift+Tab removes one tab immediately
 // before a collapsed caret. Tugtile's tile structure is tab-indented (serializeTile re-adds it on write),
 // so being able to type a real tab matters when editing a raw board file in marktile. Pure → unit-tested.
@@ -183,7 +203,6 @@ function mountEditor(contentEl, opts, host) {
       el.addEventListener('click', fn);                                                             // Mouse/desktop click
     };
     if (opts.onToc) { const tc = bar.createEl('button', { cls: 'tugtile-iconbtn tugtile-ed-toc' }); setIcon(tc.createSpan(), 'list-tree'); tc.setAttribute('aria-label', t('mtToc')); tap(tc, opts.onToc); }   // TOC toggle — sits in the ✕'s left slot; only when the host wants it (marktile passes onToc; tugtile's card modal doesn't)
-    if (opts.onCycle) { const vc = bar.createEl('button', { cls: 'tugtile-iconbtn tugtile-ed-cycle' }); const renderVc = () => { vc.empty(); const m = (opts.getMode && opts.getMode()) || EDITOR_MODES[0]; setIcon(vc.createSpan(), m.icon); vc.setAttribute('aria-label', t(m.name)); }; renderVc(); tap(vc, () => { opts.onCycle(); renderVc(); }); }   // view-mode cycle in the bar (tugtile's modal): icon reflects the current mode, tap advances the rig + re-renders. marktile keeps its in the header instead.
     if (opts.onCancel) { const x = bar.createEl('button', { cls: 'tugtile-iconbtn tugtile-ed-x' }); setIcon(x.createSpan(), 'x'); x.setAttribute('aria-label', t('cancel')); tap(x, opts.onCancel); }   // ✕ — Lucide icon (matches the toolbar), span-nested for iPad; only when the host wants a cancel affordance (modal)
     const tools = bar.createDiv({ cls: 'tugtile-ed-tools' });
     if (opts.onSave) { const ok = bar.createEl('button', { cls: 'tugtile-iconbtn tugtile-ed-ok' }); setIcon(ok.createSpan(), 'check'); ok.setAttribute('aria-label', t('save')); tap(ok, opts.onSave); }   // ✓ — Lucide check; only for the modal (the file view autosaves)
@@ -312,7 +331,7 @@ function mountEditor(contentEl, opts, host) {
       const off = offsetAt(loc.node, loc.off); lastSel = { start: off, end: off };
       return true;
     };
-    const scheduleSync = () => { clearTimeout(syncT); syncT = setTimeout(() => { if (composing) return; if (!rehighlightLine()) rehighlight(); pushHist(); }, 140); };
+    const scheduleSync = () => { clearTimeout(syncT); syncT = setTimeout(() => { if (composing) return; const v = getText(), r = renumberLists(v); if (r !== v) { const c = readSel() || lastSel; render(r); setSel(c.start, c.end); pushHist(); return; } if (!rehighlightLine()) rehighlight(); pushHist(); }, 140); };   // on idle: if an ordered list fell out of sequence (item deleted/moved) renumber it once; else the normal light rehighlight
     ed.addEventListener('compositionstart', () => { composing = true; });
     ed.addEventListener('compositionend', () => { composing = false; scheduleSync(); });
     ed.addEventListener('input', () => { if (!composing) scheduleSync(); });
@@ -383,7 +402,36 @@ function mountEditor(contentEl, opts, host) {
     // Editor shortcuts: edit the text model directly, then applyEdit re-highlights + snapshots undo; mousedown preventDefault retains the caret
     const wrap = (pre, post) => { const v = getText(), s = sel().start, e = sel().end; applyEdit(v.slice(0, s) + pre + v.slice(s, e) + post + v.slice(e), s + pre.length, e + pre.length); };
     const lineStartOf = (v, pos) => v.lastIndexOf('\n', pos - 1) + 1;
-    const togglePre = (pre) => { const v = getText(), s = sel().start, ls = lineStartOf(v, s); const ln = v.slice(ls); const has = ln.startsWith(pre); const nv = has ? v.slice(0, ls) + ln.slice(pre.length) : v.slice(0, ls) + pre + ln; const np = Math.max(ls, s + (has ? -pre.length : pre.length)); applyEdit(nv, np); };
+    // Line-prefix tools (bullet / number / check / quote). With a SELECTION it applies to EVERY line the selection
+    // touches; with just a caret it toggles that one line (caret kept). ordered=true → numbers: any "N. " counts as
+    // the prefix (so toggling off works on existing numbers), and adding renumbers the block 1..N. Blank lines are
+    // left alone. Toggles OFF only when every non-blank line already has it.
+    const togglePre = (pre, ordered) => {
+      const v = getText(), s = sel().start, e = sel().end;
+      const re = ordered ? /^\d+\.\s/ : null;
+      const has = (ln) => (re ? re.test(ln) : ln.startsWith(pre));
+      const strip = (ln) => (re ? ln.replace(re, '') : ln.slice(pre.length));
+      if (s === e) {   // no selection → just the caret's line, caret preserved (original behaviour)
+        const ls = lineStartOf(v, s), ln = v.slice(ls), h = has(ln);
+        const cut = h ? (ln.length - strip(ln).length) : 0;
+        const nv = h ? v.slice(0, ls) + strip(ln) + v.slice(ls + ln.length) : v.slice(0, ls) + (ordered ? '1. ' : pre) + v.slice(ls);
+        applyEdit(nv, Math.max(ls, s + (h ? -cut : (ordered ? 3 : pre.length))));
+        return;
+      }
+      const firstLs = lineStartOf(v, s), lastLs = lineStartOf(v, e - 1);
+      const nlAfter = v.indexOf('\n', lastLs), blockEnd = nlAfter === -1 ? v.length : nlAfter;
+      const lines = v.slice(firstLs, blockEnd).split('\n');
+      const nonBlank = lines.filter((ln) => ln.trim() !== '');
+      const allHave = nonBlank.length > 0 && nonBlank.every(has);
+      let n = 0;
+      const out = lines.map((ln) => {
+        if (ln.trim() === '') return ln;                                   // leave blank lines alone
+        if (allHave) return strip(ln);                                     // every non-blank has it → remove
+        if (ordered) { n++; return n + '. ' + (re.test(ln) ? ln.replace(re, '') : ln); }   // renumber the block 1..N
+        return has(ln) ? ln : pre + ln;                                    // bullet/check/quote → add where missing
+      }).join('\n');
+      applyEdit(v.slice(0, firstLs) + out + v.slice(blockEnd), firstLs, firstLs + out.length);   // keep the block selected
+    };
     const setHeading = (hashes) => { const v = getText(), s = sel().start, ls = lineStartOf(v, s); const rest = v.slice(ls); const m = /^#{1,6}\s/.exec(rest); const cur = m ? m[0].length : 0; const repl = (m && m[0] === hashes) ? '' : hashes; const nv = v.slice(0, ls) + repl + rest.slice(cur); const np = Math.max(ls, s + (repl.length - cur)); applyEdit(nv, np); };
     // Bind a toolbar button so a TAP fires the action (keeping editor focus) but a SWIPE scrolls the row instead.
     // The old approach fired on touchstart+preventDefault, which was hair-trigger and blocked horizontal scrolling.
@@ -406,7 +454,7 @@ function mountEditor(contentEl, opts, host) {
       undo: () => { if (hi > 0) { hi--; restore(hist[hi]); } }, redo: () => { if (hi < hist.length - 1) { hi++; restore(hist[hi]); } },
       h1: () => setHeading('# '), h2: () => setHeading('## '), h3: () => setHeading('### '),
       bold: () => wrap('**', '**'), italic: () => wrap('*', '*'), strike: () => wrap('~~', '~~'),
-      bullet: () => togglePre('- '), number: () => togglePre('1. '), check: () => togglePre('- [ ] '), quote: () => togglePre('> '),
+      bullet: () => togglePre('- '), number: () => togglePre('1. ', true), check: () => togglePre('- [ ] '), quote: () => togglePre('> '),
       table: () => { const v = getText(), s = sel().start, ls = lineStartOf(v, s); const pre = (ls > 0 && v[ls - 1] !== '\n') ? '\n' : ''; const tbl = pre + '|  |  |\n| --- | --- |\n|  |  |\n'; applyEdit(v.slice(0, ls) + tbl + v.slice(ls), ls + pre.length + 2); },   // insert a starter 2×2 table; decorateTables grids it for in-place editing
       code: () => wrap('`', '`'), link: () => wrap('[[', ']]'),
       date: () => insertTok(host.dateTrigger || '@'), time: () => insertTok(host.timeTrigger || '@@'),
@@ -498,6 +546,7 @@ function mountEditor(contentEl, opts, host) {
     rawValue: () => getText(),
     setText: (text) => { if (ed.getAttribute('contenteditable') === 'false') return; render(text); pushHist(); },   // programmatic whole-document replace (TOC drag-reorder); pushHist → undoable + fires onChange (autosave). read-only guard like applyEdit.
     isDirty: () => getText().replace(/\s+$/, '') !== orig.replace(/\s+$/, ''),
+    insertText: (text) => insertTok(text),   // insert at the caret (used by image paste/drop); applyEdit's read-only guard applies
     focus: () => ta.focus(),
     destroy: () => { clearTimeout(syncT); if (vv) { vv.removeEventListener('resize', applyVV); vv.removeEventListener('scroll', applyVV); } if (sizer) { sizer.style.height = ''; sizer.style.maxHeight = ''; } },
   };
@@ -517,10 +566,8 @@ class TileEditModal extends Modal {
     this.modalEl.addClass('tugtile-edit-modal-full');
     this._ctrl = mountEditor(this.contentEl, {
       text: this._opts.text || '',
-      onCancel: () => this._requestClose(), onSave: () => this._doClose('save'), onSubmit: () => this._doClose('save'), onEscape: () => this._requestClose(),
+      onSubmit: () => this._doClose('save'), onEscape: () => this._requestClose(),   // keyboard: Enter saves, Escape cancels (the ✕/✓ buttons live in the control strip below)
       onToc: () => { if (this._rig && this._rig.toc) this._rig.toc.toggle(); },
-      onCycle: () => { if (this._rig) this._rig.cycleMode(); },
-      getMode: () => (this._rig ? this._rig.currentMode() : EDITOR_MODES[0]),
     }, this.host);
     // Equip the same rig marktile uses → tugtile's big editor is literally marktile + the ✕/✓ buttons. Host hooks:
     // Obsidian vault image resolution (source path = the board file) and the TOC's Sortable + mobile/anchor tuning.
@@ -528,6 +575,7 @@ class TileEditModal extends Modal {
     this._rig = equipEditor({
       mount: this.contentEl, ctrl: this._ctrl,
       enabledModes: (this.host.plugin && this.host.plugin.settings && this.host.plugin.settings.modes) || {},
+      saveImage: (blob) => saveVaultImage(app, srcPath, blob),   // paste/drop an image → vault attachment + ![[…]]
       resolveSrc: (raw) => {
         raw = String(raw).split('|')[0].trim();
         if (/^(https?:|data:|app:)/i.test(raw)) return raw;
@@ -541,7 +589,23 @@ class TileEditModal extends Modal {
         sortableOptions: { delay: 180, delayOnTouchOnly: true, touchStartThreshold: 8, forceFallback: true, fallbackOnBody: true, fallbackTolerance: 4, dragClass: 'marktile-toc-item--drag' },
       },
     });
+    // Control strip in marktile's exact markup, prepended above the toolbar: [✕] · viewcycle · lock · [✓]. So the
+    // big editor reads as marktile + the modal's cancel/save. (marktile builds the same-looking strip in its header.)
+    const strip = createDiv({ cls: 'tugtile__ctlbar' });
+    this._ctl = buildEditorCtl(strip, {
+      cycleMode: () => { if (this._rig) this._rig.cycleMode(); },
+      currentMode: () => (this._rig ? this._rig.currentMode() : EDITOR_MODES[0]),
+      toggleLock: () => this._toggleLock(),
+      isLocked: () => !!this._locked,
+      brand: t('mtBrand'), brandLocked: t('mtBrandLocked'),
+      modeLabel: t('mtModeToggle'), lockLabel: t('mtLockToggle'),
+      onCancel: () => this._requestClose(), cancelLabel: t('cancel'),
+      onSave: () => this._doClose('save'), saveLabel: t('save'),
+    });
+    this.contentEl.prepend(strip);
   }
+  _toggleLock() { this._locked = !this._locked; this._applyLock(); }
+  _applyLock() { const ed = this.contentEl.querySelector('.tugtile-ed-rich'); if (ed) ed.setAttribute('contenteditable', String(!this._locked)); this.contentEl.toggleClass('tugtile--locked', !!this._locked); }
   _dirty() { return !!this._ctrl && this._ctrl.isDirty(); }
   close() {
     if (this._forceClose) { this._animateClose(); return; }
@@ -1047,7 +1111,7 @@ const EDITOR_MODES = [
   { key: 'plain', cls: 'tugtile-plain', icon: 'square-code', name: 'mtModePlain' },
 ];
 function equipEditor(opts) {
-  const { mount, ctrl, enabledModes, resolveSrc, toc } = opts;
+  const { mount, ctrl, enabledModes, resolveSrc, toc, saveImage } = opts;
   const onModes = () => { const md = enabledModes || {}; const on = EDITOR_MODES.filter((m) => md[m.key] !== false); return on.length ? on : EDITOR_MODES; };
   let ix = 0;
   if (opts.initialMode) { const i = onModes().findIndex((m) => m.key === opts.initialMode); if (i >= 0) ix = i; }
@@ -1061,14 +1125,75 @@ function equipEditor(opts) {
   const tableObs = decorateTables(mount, ctrl, 'marktile-grid');
   const imgObs = resolveSrc ? decorateImages(mount, resolveSrc) : null;
   const tocCtl = toc ? wireToc(Object.assign({ mount, ctrl }, toc)) : null;
+  const paste = saveImage ? wireImagePaste(mount, ctrl, saveImage) : null;
   applyMode();
   return {
     currentMode: current,
     applyMode,
     cycleMode() { ix = (ix + 1) % onModes().length; applyMode(); },
     toc: tocCtl,
-    destroy() { try { tableObs.disconnect(); } catch (e) {} if (imgObs) { try { imgObs.disconnect(); } catch (e) {} } if (tocCtl) tocCtl.destroy(); },
+    destroy() { try { tableObs.disconnect(); } catch (e) {} if (imgObs) { try { imgObs.disconnect(); } catch (e) {} } if (tocCtl) tocCtl.destroy(); if (paste) paste.destroy(); },
   };
+}
+
+// The editor control strip — viewcycle + lock in marktile's exact markup (.tugtile-headerctl), with OPTIONAL
+// cancel/save buttons on the ends. marktile builds its own strip inside the hijacked Obsidian header; TileEditModal
+// builds THIS one at the top of the modal, so tugtile's big editor reads as "marktile + ✕/✓" — one look, two
+// placements. ctl: { cycleMode, currentMode, toggleLock, isLocked, brand, brandLocked, modeLabel, lockLabel,
+// onCancel, cancelLabel, onSave, saveLabel }. Returns { el, refresh }.
+function buildEditorCtl(parent, ctl) {
+  const wrap = parent.createSpan({ cls: 'tugtile-headerctl' });
+  const iconBtn = (icon, label, fn) => { const b = wrap.createEl('button', { cls: 'tugtile-iconbtn' }); setIcon(b.createSpan(), icon); b.setAttribute('aria-label', label || ''); b.onclick = (e) => { e.preventDefault(); e.stopPropagation(); fn(); }; return b; };
+  if (ctl.onCancel) iconBtn('x', ctl.cancelLabel, ctl.onCancel);   // ✕ on the left (modal only)
+  const vc = wrap.createSpan({ cls: 'tugtile-viewcycle' });
+  vc.setAttribute('role', 'button'); vc.setAttribute('aria-label', ctl.modeLabel || '');
+  vc.onclick = (e) => { e.preventDefault(); e.stopPropagation(); ctl.cycleMode(); refresh(); };
+  wrap.createSpan({ cls: 'tugtile-sep', text: '·' });
+  const lk = wrap.createSpan({ cls: 'tugtile-brand' });
+  lk.setAttribute('role', 'button'); lk.setAttribute('aria-label', ctl.lockLabel || '');
+  lk.onclick = (e) => { e.preventDefault(); e.stopPropagation(); ctl.toggleLock(); refresh(); };
+  if (ctl.onSave) iconBtn('check', ctl.saveLabel, ctl.onSave);   // ✓ on the right (modal only)
+  function refresh() {   // populate unconditionally — the strip is built detached (before prepend), so an isConnected gate would skip the first paint
+    vc.empty(); const m = ctl.currentMode(); setIcon(vc.createSpan({ cls: 'tugtile-viewcycle-icon' }), m.icon); vc.createSpan({ cls: 'tugtile-viewcycle-name', text: t(m.name) });
+    lk.empty(); const locked = ctl.isLocked && ctl.isLocked(); lk.createSpan({ cls: 'tugtile-brand-text', text: locked ? (ctl.brandLocked || '') : (ctl.brand || '') }); setIcon(lk.createSpan({ cls: 'tugtile-lock-icon' }), locked ? 'lock' : 'lock-open');
+  }
+  refresh();
+  return { el: wrap, refresh };
+}
+
+// Image paste/drop — without this, the browser shoves a base64 <img> into the contenteditable that getText() can't
+// see, so a pasted picture silently vanishes on the next render. Here we intercept image paste/drop, hand the blob
+// to the host's saveImage(blob) → markdown link (Obsidian: save to the vault attachment folder; ejecta: upload),
+// and insert that link at the caret — then decorateImages shows the thumbnail. Returns { destroy }.
+function wireImagePaste(root, ctrl, saveImage) {
+  const handle = async (files) => {
+    for (const f of files) {
+      if (!f || !f.type || f.type.indexOf('image/') !== 0) continue;
+      try { const link = await saveImage(f); if (link) ctrl.insertText(link); } catch (e) {}
+    }
+  };
+  const onPaste = (e) => {
+    const items = e.clipboardData && e.clipboardData.items; const files = [];
+    if (items) for (const it of items) { if (it.kind === 'file') { const f = it.getAsFile(); if (f && f.type && f.type.indexOf('image/') === 0) files.push(f); } }
+    if (files.length) { e.preventDefault(); e.stopPropagation(); handle(files); }
+  };
+  const onDrop = (e) => {
+    const fl = e.dataTransfer && e.dataTransfer.files; const imgs = fl ? [...fl].filter((f) => f.type && f.type.indexOf('image/') === 0) : [];
+    if (imgs.length) { e.preventDefault(); e.stopPropagation(); handle(imgs); }
+  };
+  root.addEventListener('paste', onPaste, true);
+  root.addEventListener('drop', onDrop, true);
+  return { destroy() { root.removeEventListener('paste', onPaste, true); root.removeEventListener('drop', onDrop, true); } };
+}
+
+// Obsidian saveImage hook — save a pasted/dropped blob into the vault's attachment folder and return an embed link.
+// Used by both Obsidian hosts (marktile + modaltile); ejecta passes its own web-upload saveImage instead.
+async function saveVaultImage(app, sourcePath, blob) {
+  const ext = (blob.type && blob.type.split('/')[1]) || 'png';
+  const stamp = (typeof Date !== 'undefined' && Date.now) ? Date.now() : Math.floor(performance.now());
+  const path = await app.fileManager.getAvailablePathForAttachment('pasted-' + stamp + '.' + ext, sourcePath || '');
+  const file = await app.vault.createBinary(path, await blob.arrayBuffer());
+  return '![[' + file.name + ']]';
 }
 
 const DEFAULT_SETTINGS = {
@@ -1082,6 +1207,7 @@ const DEFAULT_SETTINGS = {
   archiveHeading: 'Archive', // Heading for newly created archive sections (uses localized strings in kanban to align when returning to kanban; can be customized to "Archive", etc.)
   responsiveBoard: false,    // When on, the board auto-reflows to a vertical stack on narrow panes
   editorTools: {},           // Per-button on/off for the editor toolbar (missing key = on); see EDITOR_TOOLS
+  modes: {},                 // Per-mode on/off for the big editor's view cycle (missing key = on); see EDITOR_MODES
 };
 
 const VIEW_TYPE = 'tugtile-board';
@@ -1790,10 +1916,7 @@ class BoardView extends ItemView {
       handle: '.tugtile__lane-head',
       filter: '.tugtile__addcol',
       animation: 150,
-      delay: 180,
-      delayOnTouchOnly: true,
-      forceFallback: true,
-      fallbackOnBody: true,
+      ...DRAG_TOUCH,   // lane drag now matches the tile: a still tap/long-press to rename isn't hijacked into a drag
       ghostClass: 'tugtile__lane--ghost',
       chosenClass: 'tugtile__lane--chosen',
       dragClass: 'tugtile__lane--drag',
@@ -1903,12 +2026,7 @@ class BoardView extends ItemView {
       group: 'tugtile',
       disabled: !!this._locked,   // No drag-and-drop while the board is locked
       animation: 150,
-      delay: 180,
-      delayOnTouchOnly: true,
-      touchStartThreshold: 8,   // Tolerate a little finger tremor before a drag engages, so a still long-press can reach the context menu instead of accidentally dragging
-      forceFallback: true,
-      fallbackOnBody: true,
-      fallbackTolerance: 4,
+      ...DRAG_TOUCH,   // shared touch tuning (see DRAG_TOUCH) — long-press + tremor tolerance, identical to the lanes
       scroll: false,
       ghostClass: 'tugtile__tile--ghost',
       chosenClass: 'tugtile__tile--chosen',
@@ -2276,7 +2394,7 @@ class BoardView extends ItemView {
     this._openMenu = menu;
     const p0 = (e && e.touches && e.touches[0]) || e || {};
     const ox = p0.clientX || 0, oy = p0.clientY || 0;
-    const onMove = (ev) => { const p = (ev.touches && ev.touches[0]) || ev; if (Math.abs((p.clientX || 0) - ox) > 12 || Math.abs((p.clientY || 0) - oy) > 12) this.closeOpenMenu(); };   // Starting to drag/scroll dismisses the menu
+    const onMove = (ev) => { if (ev.pointerType === 'mouse') return; const p = (ev.touches && ev.touches[0]) || ev; if (Math.abs((p.clientX || 0) - ox) > 12 || Math.abs((p.clientY || 0) - oy) > 12) this.closeOpenMenu(); };   // touch/pen drag-to-scroll dismisses the menu; mouse is EXEMPT (otherwise moving toward the popup, always >12px, closed it before you could reach it)
     this._menuMove = onMove;
     document.addEventListener('pointermove', onMove, { capture: true, passive: true });
     document.addEventListener('touchmove', onMove, { capture: true, passive: true });
@@ -3309,6 +3427,24 @@ class TugtileSettingTab extends PluginSettingTab {
     toolPicker(t('gFormatTools'), t('gFormatToolsDesc'), 'format');
     toolPicker(t('gBlockTools'), t('gBlockToolsDesc'), 'block');
     toolPicker(t('gInsertTools'), t('gInsertToolsDesc'), 'insert');
+    // Which view modes the big editor's (modaltile) cycle rotates through — same picker marktile has. The modal
+    // reads this at open, so a change takes effect on the next card open (no reload needed).
+    new Setting(containerEl).setName(t('mtModesPick')).setDesc(t('mtModesPickDesc')).then((s) => {
+      s.controlEl.addClass('tugtile-tools-pick');
+      const md = this.plugin.settings.modes || (this.plugin.settings.modes = {});
+      EDITOR_MODES.forEach((m) => {
+        const lbl = s.controlEl.createEl('label', { cls: 'tugtile-tool-chk' });
+        const cb = lbl.createEl('input', { type: 'checkbox' });
+        cb.checked = md[m.key] !== false;
+        setIcon(lbl.createSpan({ cls: 'tugtile-tool-chk-i' }), m.icon);
+        lbl.createSpan({ text: t(m.name) });
+        cb.onchange = async () => {
+          const willOn = EDITOR_MODES.filter((x) => (x.key === m.key ? cb.checked : md[x.key] !== false));
+          if (!willOn.length) { cb.checked = true; new Notice(t('mtModesMinOne')); return; }   // keep at least one mode
+          md[m.key] = cb.checked; await this.plugin.saveSettings();
+        };
+      });
+    });
 
     new Setting(containerEl)
       .setName(t('gEnterSubmit'))
