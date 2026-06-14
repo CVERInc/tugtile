@@ -1493,6 +1493,20 @@ function setSetting(post, key, value) {
 // Writes back list-collapse (an array of booleans indicating collapse states, matching lane order) using setSetting
 function setListCollapse(post, arr) { return setSetting(post, 'list-collapse', arr); }
 
+// --- Fold-all cycle (PURE, platform-free) — the 3-state decision logic, shared by the Obsidian board (BoardView
+// reads the live DOM then calls these) and the web surface (board-core.js). The DOM/animation APPLY stays per-host;
+// only the "which state, what it means, what icon" decisions live here. Invariant: lanes collapsed ⇒ everything shut.
+const FOLD_ICONS = ['maximize-2', 'expand', 'shrink'];   // index by NEXT state — the icon hints the action the next click does
+const FOLD_TARGETS = [                                    // what each state means for lanes/cards
+  { lanesCollapsed: false, cardsExpanded: false },        // 0: lanes open, cards folded
+  { lanesCollapsed: false, cardsExpanded: true },         // 1: all open
+  { lanesCollapsed: true, cardsExpanded: false },         // 2: all collapsed
+];
+function foldStateFrom(allLanesCollapsed, allLongTilesOpen) { return allLanesCollapsed ? 2 : (allLongTilesOpen ? 1 : 0); }
+function nextFold(state) { return (state + 1) % 3; }
+function foldTargets(state) { return FOLD_TARGETS[state] || FOLD_TARGETS[0]; }
+function foldIcon(state) { return FOLD_ICONS[nextFold(state)]; }   // the button shows the NEXT action
+
 // Settings keys tugtile understands; "upgrade to tugtile format" keeps only these and drops kanban-only keys for a clean file.
 const TUGTILE_SETTING_KEYS = ['show-checkboxes', 'hide-card-count', 'date-trigger', 'time-trigger', 'date-format', 'date-display-format', 'time-format', 'link-date-to-daily-note', 'show-relative-date', 'tag-colors', 'move-tags', 'tag-action', 'archive-date-format', 'archive-date-separator', 'append-archive-date', 'new-line-trigger', 'new-card-insertion-method', 'archive-with-date', 'max-archive-size', 'list-collapse', 'tugtile-view', 'tugtile-locked'];
 // True if the file still carries obsidian-kanban markers (frontmatter key or settings marker).
@@ -2109,16 +2123,16 @@ class BoardView extends ItemView {
   // Header action icon reflecting the active view, so the toolbar button mirrors what is currently shown
   viewIcon() { return ({ board: 'gallery-vertical', table: 'table' })[this.viewMode] || 'gallery-vertical'; }
   // Invariant: tiles can't be expanded while lanes are collapsed — so when lanes are collapsed, everything is shut.
-  _foldState() {   // derived from the DOM (not the all-at-once flags) so manual single-lane/single-tile ops are reflected
+  _foldState() {   // read the LIVE DOM (reflects manual single-lane/tile ops), then the pure foldStateFrom decides 0/1/2
     const lanes = this.contentEl.querySelectorAll('.tugtile__lane');
-    if (lanes.length && Array.from(lanes).every((l) => l.dataset.collapsed === 'true')) return 2;   // all lanes collapsed
+    const allLanesCollapsed = lanes.length > 0 && Array.from(lanes).every((l) => l.dataset.collapsed === 'true');
     const longs = Array.from(this.contentEl.querySelectorAll('.tugtile__tile')).filter((el) => el.dataset.long === 'true');
-    return longs.every((t) => !t.classList.contains('tugtile__tile--folded')) ? 1 : 0;   // 1 = all open; 0 = lanes open but ≥1 tile folded
+    return foldStateFrom(allLanesCollapsed, longs.every((t) => !t.classList.contains('tugtile__tile--folded')));
   }
   refreshFoldIcon() {
     if (!this._foldAllEl) return;
-    const next = (this._foldState() + 1) % 3;   // icon + label = the action the NEXT click performs (matches toggleFoldAll)
-    setIcon(this._foldAllEl, ['maximize-2', 'expand', 'shrink'][next]);
+    const next = nextFold(this._foldState());   // icon + label = the action the NEXT click performs (matches toggleFoldAll)
+    setIcon(this._foldAllEl, FOLD_ICONS[next]);
     this._foldAllEl.setAttribute('aria-label', [t('expandLanesAction'), t('expandAllAction'), t('collapseAllAction')][next]);
   }
   // Sets every long tile's fold state (DOM + tracker + icon)
@@ -2184,7 +2198,7 @@ class BoardView extends ItemView {
     this.persist();
   }
   toggleFoldAll() {   // 3-state cycle: lanes-only (maximize-2) → all-open (expand) → all-collapsed (shrink) → …
-    this._applyFoldState((this._foldState() + 1) % 3);
+    this._applyFoldState(nextFold(this._foldState()));
   }
   _applyFoldState(s) {
     if (s === 1) return this.expandAll();    // all open (keeps the FLIP tile animation)
