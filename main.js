@@ -1291,7 +1291,7 @@ const SCROLL_MAX = 22;    // Maximum scroll speed per frame (px) at the outermos
 function tileRenderText(tileLines) {
   const out = [];
   const m = tileLines[0].match(/^- \[.\] ?(.*)/);    // Do not use $ (remaining \r in CRLF causes (.*)$ to fail to match the end of line)
-  out.push(m ? m[1] : tileLines[0]);
+  out.push((m ? m[1] : tileLines[0]).replace(/\s*%%tg-home:.*?%%/, ''));   // hide the archive home-lane token (archived cards only; no-op on active cards)
   for (let i = 1; i < tileLines.length; i++) {
     out.push(tileLines[i].replace(/^(?:\t| {1,4})/, ''));   // Remove indentation for wrapped lines: one tab or 1-4 spaces
   }
@@ -1862,7 +1862,7 @@ class BoardView extends ItemView {
       group: 'tugtile', sort: false,
       onAdd: (evt) => {
         const el = evt.item; const tile = this.allTiles[Number(el.dataset.tid)];
-        if (tile) this.addToArchive(tile.raw);
+        if (tile) this.addToArchive(tile.raw, this._laneName(evt.from && evt.from.closest('.tugtile__lane')));   // evt.from = the lane the card was dragged out of
         el.remove();
         this.renumber();
         this.persist().then(() => this.toastUndo(t('archivedTile')));
@@ -2512,8 +2512,19 @@ class BoardView extends ItemView {
     new Notice(t('splitDone', lines.length));
   }
 
+  // Read a lane's display name (the title text, WIP count lives in a separate span) — the key for "restore to home".
+  _laneName(laneEl) { const t = laneEl && laneEl.querySelector('.tugtile__lane-title'); return t ? t.textContent : ''; }
+  // Tag an archived card's first line with where it came from: a %%tg-home:Lane%% comment (Obsidian hides it; we strip
+  // it on restore/display). Inserted before any trailing ^blockId so the blockId stays at the line end.
+  _tagHome(line0, lane) {
+    const safe = String(lane || '').replace(/%%/g, '').replace(/\s+/g, ' ').trim();
+    if (!safe) return line0;
+    const tok = ' %%tg-home:' + safe + '%%';
+    const bm = /(\s+\^[A-Za-z0-9-]+)$/.exec(line0);
+    return bm ? line0.slice(0, bm.index) + tok + bm[0] : line0 + tok;
+  }
   // Appends a card's raw content to the archive section: formats timestamp based on kanban settings (format, separator, position), enforces size limit, and creates section with localized header if missing
-  addToArchive(raw) {
+  addToArchive(raw, homeLane) {
     let entry = raw;
     if (this.archiveWithDate) {
       const lines = raw.split('\n');
@@ -2529,6 +2540,7 @@ class BoardView extends ItemView {
         entry = lines.join('\n');
       }
     }
+    if (homeLane) { const ls = entry.split('\n'); ls[0] = this._tagHome(ls[0], homeLane); entry = ls.join('\n'); }   // remember the home lane for restore
     this.model.archive = (this.model.archive && this.model.archive.trim())
       ? this.model.archive.replace(/\s+$/, '') + '\n' + entry
       : '***\n\n## ' + (this.archiveHeading || 'Archive') + '\n\n' + entry;
@@ -2539,7 +2551,7 @@ class BoardView extends ItemView {
   }
   // Archives a card: appends to archive and removes from board
   archiveTile(tileEl) {
-    this.addToArchive(this.allTiles[Number(tileEl.dataset.tid)].raw);
+    this.addToArchive(this.allTiles[Number(tileEl.dataset.tid)].raw, this._laneName(tileEl.closest('.tugtile__lane')));
     tileEl.remove();
     this.renumber();
     this.persist().then(() => this.toastUndo(t('archivedTile')));
@@ -2824,11 +2836,16 @@ class BoardView extends ItemView {
   restoreArchived(index) {
     const { prefix, cards } = this.splitArchive();
     if (index < 0 || index >= cards.length) return;
-    const raw = cards[index];   // Restore content as-is (timestamps added during archiving remain part of the restored text)
+    let raw = cards[index];   // Restore content as-is (timestamps added during archiving remain part of the restored text)
+    const hm = /\s*%%tg-home:(.*?)%%/.exec(raw);   // recorded home lane (if any) → restore there; strip the token from the card
+    const home = hm ? hm[1] : null;
+    if (hm) raw = raw.replace(/\s*%%tg-home:.*?%%/, '');
     const cm = /^- \[(.)\]/.exec(raw);
-    const firstList = this.contentEl.querySelector('.tugtile__list');
-    if (!firstList) { new Notice(t('noLaneToRestore')); return; }
-    this.makeTileEl(firstList, { raw, text: tileRenderText(raw.split('\n')), check: cm ? cm[1] : ' ' });
+    let targetList = null;
+    if (home) { for (const lane of this.contentEl.querySelectorAll('.tugtile__lane')) { if (this._laneName(lane) === home) { targetList = lane.querySelector('.tugtile__list'); break; } } }
+    if (!targetList) targetList = this.contentEl.querySelector('.tugtile__list');   // home gone / renamed / not recorded → first lane
+    if (!targetList) { new Notice(t('noLaneToRestore')); return; }
+    this.makeTileEl(targetList, { raw, text: tileRenderText(raw.split('\n')), check: cm ? cm[1] : ' ' });
     cards.splice(index, 1);
     this.model.archive = this.rebuildArchive(prefix, cards);
     this.persist();
