@@ -1522,7 +1522,7 @@ class BoardView extends ItemView {
     this._redo = [];   // Used for redo after an undo operation
   }
   getViewType() { return VIEW_TYPE; }
-  getIcon() { return 'layout-dashboard'; }
+  getIcon() { return 'gallery-vertical'; }
   getDisplayText() {
     // Tab title = plain file name only (no brand suffix), so narrow tabs show as much of the name as possible.
     // The brand ("· tugtile-ing") lives in the centered header title instead, applied by decorateHeaderTitle().
@@ -2106,7 +2106,7 @@ class BoardView extends ItemView {
     }));
   }
   // Header action icon reflecting the active view, so the toolbar button mirrors what is currently shown
-  viewIcon() { return ({ board: 'layout-dashboard', table: 'table' })[this.viewMode] || 'layout-dashboard'; }
+  viewIcon() { return ({ board: 'gallery-vertical', table: 'table' })[this.viewMode] || 'gallery-vertical'; }
   // Invariant: tiles can't be expanded while lanes are collapsed — so when lanes are collapsed, everything is shut.
   _foldState() {   // derived from the DOM (not the all-at-once flags) so manual single-lane/single-tile ops are reflected
     const lanes = this.contentEl.querySelectorAll('.tugtile__lane');
@@ -3335,17 +3335,17 @@ module.exports = class TugtilePlugin extends Plugin {
     this.registerEvent(this.app.workspace.on('file-menu', (menu, file, source, leaf) => {
       if (!file) return;
       if (file.children !== undefined) {   // Folder → Create board in folder
-        menu.addItem((i) => i.setTitle(t('createBoardHere')).setIcon('layout-dashboard').onClick(() => this.createBoard(file)));
+        menu.addItem((i) => i.setTitle(t('createBoardHere')).setIcon('gallery-vertical').onClick(() => this.createBoard(file)));
         return;
       }
       if (file.extension !== 'md' || !leaf) return;
       if (leaf.view instanceof BoardView) {
         menu.addItem((i) => i.setTitle(t('openAsMarkdownAction')).setIcon('file-text').onClick(() => this.setMarkdownView(leaf)));
       } else if (leaf.view instanceof MarkdownView && this.isBoardFile(file.path)) {
-        menu.addItem((i) => i.setTitle(t('openAsBoard')).setIcon('layout-dashboard').onClick(() => this.setBoardView(leaf)));
+        menu.addItem((i) => i.setTitle(t('openAsBoard')).setIcon('gallery-vertical').onClick(() => this.setBoardView(leaf)));
       }
     }));
-    this.addRibbonIcon('layout-dashboard', t('ribbonTitle'), () => {
+    this.addRibbonIcon('gallery-vertical', t('ribbonTitle'), () => {
       const file = this.app.workspace.getActiveFile();
       if (file && file.extension === 'md') this.openBoard(file.path);
       else new Notice(t('ribbonNoFile'));
