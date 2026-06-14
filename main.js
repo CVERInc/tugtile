@@ -63,7 +63,7 @@ const EDITOR_TOOLS = [
   { key: 'code', g: '</>', icon: 'code', cat: 'insert', tip: 'edCode' }, { key: 'link', g: '[[ ]]', icon: 'link', cat: 'insert', tip: 'edLink' },
   // image/video: capability lives in the core, NOT injected per-surface. Each host wires the platform seam via
   // opts.pickImage / opts.pickVideo (Obsidian: vault save / web: upload) — `needs` hides the button when unwired.
-  { key: 'image', g: '🖼', icon: 'image', cat: 'insert', tip: 'edImage', needs: 'pickImage' }, { key: 'video', g: '🎞', icon: 'video', cat: 'insert', tip: 'edVideo', needs: 'pickVideo' }, 'sep',
+  { key: 'image', g: 'IMG', icon: 'image', cat: 'insert', tip: 'edImage', needs: 'pickImage' }, { key: 'video', g: 'VID', icon: 'video', cat: 'insert', tip: 'edVideo', needs: 'pickVideo' }, 'sep',
   { key: 'date', g: '@', icon: 'calendar', cat: 'insert', tip: 'edDate' }, { key: 'time', g: '@@', icon: 'clock', cat: 'insert', tip: 'edTime' },
 ];
 
@@ -1288,6 +1288,10 @@ const SCROLL_MAX = 22;    // Maximum scroll speed per frame (px) at the outermos
    - post = Original text starting from `%% kanban:settings`, preserved as-is.
    - tile.raw = Exact markdown text of the card in the file (`- [ ]` line + tab-indented content, trailing blank lines trimmed) → used for writing back, content preserved verbatim.
    - tile.text = Card body markdown after removing `- [ ]` and one level of indentation → used for rendering. */
+// Normalise a lane name into the archive home-key: strip the %% token delimiter, collapse any whitespace (incl.
+// full-width 　 / NBSP, which \s matches) to a single space, trim. MUST be applied on BOTH sides (writing the token
+// and matching on restore) or a full-width-space lane name won't match its own token. See archive-restore-e2e.test.
+function homeKey(s) { return String(s || '').replace(/%%/g, '').replace(/\s+/g, ' ').trim(); }
 function tileRenderText(tileLines) {
   const out = [];
   const m = tileLines[0].match(/^- \[.\] ?(.*)/);    // Do not use $ (remaining \r in CRLF causes (.*)$ to fail to match the end of line)
@@ -1856,7 +1860,9 @@ class BoardView extends ItemView {
     // Search runs through a Modal (openSearch), not an inline bar — inline inputs misbehave on iPad. applySearch() below re-applies any active term after a redraw.
     if (this.viewMode === 'table') { this.renderTableView(root); this.applySearch(); return; }
     // Trello-style archive bar at the top: drop cards here to archive (revealed during drag)
-    const bar = root.createDiv({ cls: 'tugtile__archivebar', text: '📥 ' + t('dropToArchive') });
+    const bar = root.createDiv({ cls: 'tugtile__archivebar' });
+    setIcon(bar.createSpan({ cls: 'tugtile__archivebar-i' }), 'archive');
+    bar.createSpan({ text: t('dropToArchive') });
     this._archiveBar = bar;
     this._sortables.push(new Sortable(bar, {
       group: 'tugtile', sort: false,
@@ -2302,9 +2308,11 @@ class BoardView extends ItemView {
       if (cls) chip.addClass(cls);
       let label = this.formatDate(meta.date);
       if (this.showRelativeDate) { const rel = this.relativeDate(meta.date); if (rel) label += t('relDateWrap', rel); }
-      chip.createSpan({ cls: 'tugtile__date-d', text: '📅 ' + label });
+      const dd = chip.createSpan({ cls: 'tugtile__date-d' });
+      setIcon(dd.createSpan({ cls: 'tugtile__date-i' }), 'calendar');
+      dd.createSpan({ text: label });
     }
-    if (meta.time) chip.createSpan({ cls: 'tugtile__date-t', text: (meta.date ? '　' : '') + '⏰ ' + meta.time });
+    if (meta.time) { const dt = chip.createSpan({ cls: 'tugtile__date-t' }); setIcon(dt.createSpan({ cls: 'tugtile__date-i' }), 'clock'); dt.createSpan({ text: meta.time }); }
   }
   formatDate(s) {
     const p = parseDateStr(s, this.dateFormat);   // Parse using the board's configured date-format (no longer hardcoded to ISO)
@@ -2517,7 +2525,7 @@ class BoardView extends ItemView {
   // Tag an archived card's first line with where it came from: a %%tg-home:Lane%% comment (Obsidian hides it; we strip
   // it on restore/display). Inserted before any trailing ^blockId so the blockId stays at the line end.
   _tagHome(line0, lane) {
-    const safe = String(lane || '').replace(/%%/g, '').replace(/\s+/g, ' ').trim();
+    const safe = homeKey(lane);
     if (!safe) return line0;
     const tok = ' %%tg-home:' + safe + '%%';
     const bm = /(\s+\^[A-Za-z0-9-]+)$/.exec(line0);
@@ -2842,7 +2850,7 @@ class BoardView extends ItemView {
     if (hm) raw = raw.replace(/\s*%%tg-home:.*?%%/, '');
     const cm = /^- \[(.)\]/.exec(raw);
     let targetList = null;
-    if (home) { for (const lane of this.contentEl.querySelectorAll('.tugtile__lane')) { if (this._laneName(lane) === home) { targetList = lane.querySelector('.tugtile__list'); break; } } }
+    if (home) { for (const lane of this.contentEl.querySelectorAll('.tugtile__lane')) { if (homeKey(this._laneName(lane)) === home) { targetList = lane.querySelector('.tugtile__list'); break; } } }
     if (!targetList) targetList = this.contentEl.querySelector('.tugtile__list');   // home gone / renamed / not recorded → first lane
     if (!targetList) { new Notice(t('noLaneToRestore')); return; }
     this.makeTileEl(targetList, { raw, text: tileRenderText(raw.split('\n')), check: cm ? cm[1] : ' ' });
