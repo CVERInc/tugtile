@@ -1622,7 +1622,7 @@ class BoardView extends ItemView {
     if (!nav) header.insertBefore(left, header.firstChild);
     left.empty();
     left.addClass('tugtile-leftacts');
-    [this._searchActionEl, this._undoActionEl, this._redoActionEl].forEach((el) => { if (el) left.appendChild(el); });   // L→R: search, undo, redo
+    [this._searchActionEl, this._undoActionEl, this._redoActionEl, this._backupActionEl].forEach((el) => { if (el) left.appendChild(el); });   // L→R: search, undo, redo, backup
     this._leftActs = left;
     this._alignLeftActs();
   }
@@ -1650,7 +1650,6 @@ class BoardView extends ItemView {
     // [undo · redo · search] [fold-all cycle] [open-in-marktile] [Archive] [Settings]. No group gaps (flush).
     this.addAction('settings', t('boardSettingsAction'), () => this.openBoardSettings());
     this.addAction('archive', t('archiveAction'), () => this.openArchiveView());
-    this.addAction('history', t('backupsAction'), () => this.openBackupView());
     // Raw-markdown editor button. marktile IS the extracted editor, so when it's installed it replaces the
     // built-in one (no reason to show both); otherwise fall back to the in-app TileEditModal whole-file editor.
     if (this.app.plugins && this.app.plugins.enabledPlugins && this.app.plugins.enabledPlugins.has('marktile')) {
@@ -1667,6 +1666,7 @@ class BoardView extends ItemView {
     this._searchActionEl = this.addAction('search', t('searchAction'), () => this.openSearch());
     this._redoActionEl = this.addAction('redo', t('redoAction'), () => this.redo());
     this._undoActionEl = this.addAction('undo', t('undoAction'), () => this.undo());
+    this._backupActionEl = this.addAction('history', t('backupsAction'), () => this.openBackupView());   // joins the left group (search · undo · redo · backup)
     this.updateUndoRedoActions();
     this.setupLeftActions();
     // ⌘Z undo / ⌘⇧Z (or ⌘Y) redo: only intercepted when this board is the active view and focus is not on an input field (allowing native text undo when editing a card)
