@@ -139,7 +139,8 @@ function renumberLists(v) {
   for (let i = 0; i < lines.length; i++) {
     const m = /^(\d+)([.)])(\s)/.exec(lines[i]);
     if (m) { n++; const want = n + m[2] + m[3]; if (m[0] !== want) { lines[i] = want + lines[i].slice(m[0].length); changed = true; } }
-    else n = 0;   // blank / non-ordered line breaks the block → next ordered run restarts at 1
+    else if (/^[ \t]+\S/.test(lines[i])) continue;   // indented continuation / nested list → part of the current item, leave the top-level counter alone
+    else n = 0;   // blank / non-indented non-ordered line breaks the block → next ordered run restarts at 1
   }
   return changed ? lines.join('\n') : v;
 }
@@ -1260,6 +1261,7 @@ const DEFAULT_SETTINGS = {
   enterSubmits: true,        // Enter to submit (false = Enter to newline, Shift/Cmd+Enter to submit)
   prependNewCards: false,    // Add new cards to the bottom of the lane (true = add to the top)
   archiveWithDate: false,    // Append timestamp when archiving
+  maxArchiveSize: -1,        // Cap on archived cards per board; oldest dropped beyond it (-1 / 0 = unlimited)
   backupRetention: 20,       // How many _tugtile-backups snapshots to keep per board (oldest pruned beyond this; -1 = keep all)
   archiveHeading: 'Archive', // Heading for newly created archive sections (uses localized strings in kanban to align when returning to kanban; can be customized to "Archive", etc.)
   responsiveBoard: false,    // When on, the board auto-reflows to a vertical stack on narrow panes
@@ -1867,6 +1869,8 @@ class BoardView extends ItemView {
     const ins = bs['new-card-insertion-method'];   // Board setting takes precedence; prepend/prepend-compact = top, append = bottom
     this.prependNewCards = ins ? (ins === 'append' ? false : true) : !!S.prependNewCards;
     this.archiveWithDate = (bs['archive-with-date'] !== undefined) ? !!bs['archive-with-date'] : !!S.archiveWithDate;
+    const cap = bs['max-archive-size'];   // Cap the number of archived cards; drop oldest beyond it. -1 / 0 / unset = unlimited.
+    this.maxArchiveSize = (typeof cap === 'number') ? cap : (typeof S.maxArchiveSize === 'number' ? S.maxArchiveSize : -1);
     this.backupRetention = (typeof S.backupRetention === 'number') ? S.backupRetention : 20;   // global — how many backup snapshots to keep per board
     this.allTiles = [];           // Flattened array of cards, indexed by tid (stable across drags)
     this._renderChild = new Component();   // Component hosting markdown sub-resources for this render, unloads as a batch on redraw/close
@@ -2576,6 +2580,16 @@ class BoardView extends ItemView {
     this.model.archive = (this.model.archive && this.model.archive.trim())
       ? this.model.archive.replace(/\s+$/, '') + '\n' + entry
       : '***\n\n## ' + (this.archiveHeading || 'Archive') + '\n\n' + entry;
+    this.enforceArchiveCap();
+  }
+  // Drop the oldest archived cards once the count exceeds max-archive-size (cards append newest-last, so we keep the
+  // last N). A cap of -1, 0, or non-positive means unlimited — no trimming.
+  enforceArchiveCap() {
+    const cap = this.maxArchiveSize;
+    if (!(typeof cap === 'number') || cap <= 0) return;
+    const { prefix, cards } = this.splitArchive();
+    if (cards.length <= cap) return;
+    this.model.archive = this.rebuildArchive(prefix, cards.slice(cards.length - cap));   // keep the newest `cap` cards
   }
   // Archives a card: appends to archive and removes from board
   archiveTile(tileEl) {
@@ -2912,7 +2926,7 @@ class BoardView extends ItemView {
     const base = (this.filePath || '').split('/').pop().replace(/\.md$/, '');
     const folder = this.app.vault.getAbstractFileByPath('_tugtile-backups');
     if (!base || !folder || !folder.children) return [];
-    return folder.children.filter((f) => f.name && f.name.startsWith(base + '-') && f.name.endsWith('.md')).sort((a, b) => (a.name < b.name ? 1 : -1));
+    return folder.children.filter((f) => isBackupOf(f.name, base)).sort((a, b) => (a.name < b.name ? 1 : -1));
   }
   openBackup(file) { this.app.workspace.getLeaf(true).openFile(file); }
   async restoreFromBackup(file) {
@@ -3108,6 +3122,14 @@ class ArchiveModal extends Modal {
 function backupWhen(name) {
   const m = /-(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})/.exec(name || '');
   return m ? (m[1] + '-' + m[2] + '-' + m[3] + ' ' + m[4] + ':' + m[5] + ':' + m[6]) : name;
+}
+// True when `name` is a backup snapshot of the board whose file base-name is `base`. Anchors the ISO timestamp
+// suffix (`-YYYY-MM-DDTHH-mm-ss-SSSZ.md`) so board "Plan" does NOT also match board "Plan-2"'s backups — a plain
+// startsWith(base+'-') collision would let one board's prune/restore touch another board's snapshots (data loss).
+function isBackupOf(name, base) {
+  if (!name || !base) return false;
+  if (!name.startsWith(base + '-')) return false;
+  return /^-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-\d{3}Z\.md$/.test(name.slice(base.length));
 }
 // Backups Modal: lists this board's _tugtile-backups snapshots (newest first), with restore + open. Makes the
 // silent safety net visible — and one tap reversible (restore backs up the current state before overwriting).
