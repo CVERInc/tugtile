@@ -2510,14 +2510,14 @@ class BoardView extends ItemView {
     this.renumber();
   }
 
-  // Inserts a card above/below a reference card (creates empty card → launches editor immediately; discarded if left empty)
+  // Inserts a card above/below a reference card (creates empty card → launches editor immediately; discarded only if the editor is cancelled untouched)
   insertTileRelative(tileEl, before) {
     const listEl = tileEl.closest('.tugtile__list');
     if (!listEl) return;
     const newEl = this.makeTileEl(listEl, { raw: this.buildRaw('', ' '), text: '', check: ' ' });
     if (before) tileEl.before(newEl); else tileEl.after(newEl);
     this.renumber();
-    this.startEditTile(newEl, true);   // fresh: true (discarded if cancelled or left empty, M1)
+    this.startEditTile(newEl, true);   // fresh: true (discarded only if cancelled untouched; pressing Save keeps it, blank or not)
   }
 
   // Splits multi-line card: converts each non-empty line into a separate single-line card (retaining original checkbox markers)
@@ -2668,11 +2668,11 @@ class BoardView extends ItemView {
   }
   showAddInput(footer, listEl) {
     if (this._lockGuard()) return;
-    // Always use the tile edit modal (supports multiline, bouncy scrolling, and proper virtual keyboard handling; empty input is auto-removed). footer parameter is retained for compatibility.
+    // Always use the tile edit modal (supports multiline, bouncy scrolling, and proper virtual keyboard handling; pressing Save keeps the card even when blank, Cancel on an untouched card removes it). footer parameter is retained for compatibility.
     const el = this.makeTileEl(listEl, { raw: this.buildRaw('', ' '), text: '', check: ' ' });
     if (this.prependNewCards && el !== listEl.firstChild) listEl.insertBefore(el, listEl.firstChild);
     this.renumber();
-    this.startEditTile(el, true);   // fresh: true (discarded if cancelled or left empty, M1)
+    this.startEditTile(el, true);   // fresh: true (discarded only if cancelled untouched; pressing Save keeps it, blank or not)
   }
   addTile(listEl, text) {
     text = String(text).replace(/\s+$/, '');
@@ -2703,7 +2703,7 @@ class BoardView extends ItemView {
     const removeFresh = () => { if (fresh && tileEl.isConnected) { tileEl.remove(); this.renumber(); this.persist(); } };   // Discard a newly inserted empty placeholder card (M1)
     new TileEditModal(this.app, this, {
       text: this.allTiles[tid].text,
-      onSave: (v) => { if (v.trim() === '' && fresh) removeFresh(); else this.applyTileEdit(tid, v); },   // Empty + fresh → cancel creation; clearing an existing card saves a blank card
+      onSave: (v) => this.applyTileEdit(tid, v),   // Save (✓) always commits — even an empty fresh card becomes a blank tile (tugtile lays out blank spacer tiles on purpose); changed-your-mind discard still runs via onDiscard (Cancel/Escape on an untouched fresh card)
       onDiscard: removeFresh,
     }).open();
   }
