@@ -584,6 +584,10 @@ class TileEditModal extends Modal {
     this.host._editModalOpen = true;
     this.host.freezeBoard();
     this.modalEl.addClass('tugtile-edit-modal-full');
+    // Tag the modal CONTAINER so the backdrop/alignment rules can target it directly instead of via
+    // .modal-container:has(.tugtile-edit-modal-full) — same timing as the modalEl class above, but no :has()
+    // selector invalidation. Guarded: the ejecta web shim's Modal may not expose containerEl.
+    if (this.containerEl) this.containerEl.addClass('tugtile-edit-host');
     // Obsidian vault hooks (source path = the board file): image save/resolution. Computed up here so mountEditor's
     // toolbar image/video buttons and equipEditor's paste handler share the same seam.
     const app = this.app, srcPath = (this.view && this.view.file) ? this.view.file.path : '';
@@ -3225,6 +3229,7 @@ class PromptModal extends Modal {
   constructor(app, opts) { super(app); this._opts = opts || {}; }
   onOpen() {
     this.modalEl.addClass('tugtile-prompt-modal');
+    if (this.containerEl) this.containerEl.addClass('tugtile-prompt-host');   // Direct container target for the backdrop/alignment rules (replaces .modal-container:has(.tugtile-prompt-modal) — no :has() invalidation)
     this._frozenView = this.app.workspace.getActiveViewOfType(BoardView);
     if (this._frozenView) this._frozenView.freezeBoard();   // Pin the board height so the virtual keyboard doesn't collapse it into a black gap behind the modal (same fix as the tile editor)
     const { contentEl } = this;
@@ -3232,11 +3237,13 @@ class PromptModal extends Modal {
     const row = contentEl.createDiv({ cls: 'tugtile-prompt-row' });
     const field = row.createDiv({ cls: 'tugtile-prompt-field' });   // The rounded input field (icon + input live inside it)
     if (this._opts.icon) setIcon(field.createSpan({ cls: 'tugtile-prompt-fieldicon' }), this._opts.icon);   // Leading icon (e.g. search) — only when the caller asks for it (search, not rename/add-lane)
-    const inp = field.createEl('input', { cls: 'tugtile-prompt-input', type: 'text' });
-    inp.value = this._opts.value || '';
-    if (this._opts.placeholder) inp.placeholder = this._opts.placeholder;
+    // Our OWN single-line contenteditable (not a native <input>) so Obsidian's input chrome never touches it —
+    // zero style overrides needed. plaintext-only keeps IME/paste clean (CJK-safe). Read the text via .textContent.
+    const inp = field.createDiv({ cls: 'tugtile-prompt-input', attr: { contenteditable: 'plaintext-only', role: 'searchbox', spellcheck: 'false' } });
+    inp.setText(this._opts.value || '');
+    if (this._opts.placeholder) inp.dataset.placeholder = this._opts.placeholder;
     this._inp = inp;
-    if (this._opts.onInput) inp.addEventListener('input', () => this._opts.onInput(inp.value));   // Live callback (e.g. search filters as you type)
+    if (this._opts.onInput) inp.addEventListener('input', () => this._opts.onInput(inp.textContent));   // Live callback (e.g. search filters as you type)
     const tap = (el, fn) => {   // Focus is not lost → virtual keyboard stays open → the tap action is registered immediately (same keyboard workaround as tile editor)
       el.addEventListener('mousedown', (e) => e.preventDefault());
       el.addEventListener('pointerdown', (e) => e.preventDefault());
@@ -3251,11 +3258,15 @@ class PromptModal extends Modal {
       if (e.key === 'Enter' && !(e.isComposing || e.keyCode === 229)) { e.preventDefault(); this._finish(true); }
       else if (e.key === 'Escape') { e.preventDefault(); this._finish(false); }
     });
-    setTimeout(() => { inp.focus(); inp.select(); }, 0);
+    setTimeout(() => {   // Focus + select-all (contenteditable has no .select(), so range over its contents)
+      inp.focus();
+      const r = document.createRange(); r.selectNodeContents(inp);
+      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    }, 0);
   }
   _finish(save) {
     if (this._done) return; this._done = true;
-    const v = this._inp ? this._inp.value : '';
+    const v = this._inp ? this._inp.textContent : '';
     this._forceClose = true; this.close();
     if (save) { if (this._opts.onSubmit) this._opts.onSubmit(v); }
     else if (this._opts.onCancel) this._opts.onCancel();
