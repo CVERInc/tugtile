@@ -21,7 +21,10 @@
 }
 /* Search/Undo/Redo live in the native back/forward container (repurposed by setupLeftActions), so they line up with the left-sidebar toggle above. */
 .tugtile-leftacts { display: flex; align-items: center; gap: 2px; padding-left: 4px; }   /* Nudge right to line up the first icon with the left-sidebar toggle above (auto-measure couldn't find the toggle on iPad) */
-.tugtile-leftacts > * { margin: 0 !important; }   /* Reset Obsidian's per-action margins so Search/Undo/Redo are evenly spaced and aligned */
+/* iPad only, Obsidian sets `.is-mobile .view-action { margin: auto 0 }` (specificity (0,2,0)) on these addAction
+   icons, which misaligns Search/Undo/Redo. This (0,3,0) compound out-specifies it and resets the margin without
+   !important — the children always carry both classes (addAction → .clickable-icon.view-action). */
+.tugtile-leftacts > .clickable-icon.view-action { margin: 0; }
 /* Board⇄table swap: the outgoing snapshot slides up & out while the new view rises from below (two panels shuffling). */
 .tugtile-viewsnap {
   position: absolute; inset: 0; z-index: 3;
@@ -615,15 +618,8 @@ body.is-phone .tugtile-ed-bar { padding-top: 6px; padding-bottom: 4px; }
 }
 .is-phone .marktile-toc { width: 100%; border-right: none; }       /* phone: full-width overlay (sidebar too cramped) */
 .is-phone .marktile-toc-open .tugtile-ed-scroll { padding-left: 0; }
-/* marktile viewcycle → Plain mode: neutralize ALL editor styling so it's a bare plain-text markdown editor
-   (uniform size/weight, no colours, markers shown as-is). Pure CSS — no rendering, no parser, fully portable. */
-.tugtile-plain .tg-line,
-.tugtile-plain .tg-line * {
-  font-size: 1em !important; font-weight: normal !important; font-style: normal !important;
-  text-decoration: none !important; color: var(--text-normal) !important; background: transparent !important;
-  font-family: var(--font-monospace) !important; line-height: inherit !important;   /* monospace = raw-source feel */
-  border: 0 !important; padding-left: 0 !important; margin: 0 !important;
-}
+/* marktile viewcycle → Plain mode neutralizer lives AFTER the syntax rules below — it must out-specify every one
+   of them WITHOUT !important, so it's placed past the last competitor (see the specificity-contract comment there). */
 /* marktile lock → read-only. contenteditable=false alone is OVERRIDDEN on WebKit by the editor's
    -webkit-user-modify: read-write-plaintext-only, so flip that to read-only here (the real switch). Also
    disable the toolbar so a stray tap can't edit (Obsidian has no save step — whatever changes IS saved). */
@@ -662,6 +658,25 @@ body.is-phone .tugtile-ed-rich { padding-bottom: 55vh; }
 .marktile-palette-color .tugtile-ed-rich .tg-code { color: var(--color-green, #98c379); }
 .marktile-palette-color .tugtile-ed-rich .tg-tag,
 .marktile-palette-color .tugtile-ed-rich .tg-link { color: var(--color-cyan, #56b6c2); }
+/* Plain mode = a hard reset of ALL the syntax styling above to a bare monospace baseline. This used to be one
+   !important block; it's now specificity-only (no !important) so styles.css is 100% !important-free.
+   ⚠️ SPECIFICITY CONTRACT — do not weaken, and keep this block AFTER every syntax rule above:
+     • every syntax rule above tops out at (0,3,0) — the .marktile-palette-color and .marktile-ed .tg-hN .tg-tab rules.
+     • `.tugtile-plain .tugtile-ed-rich .tg-line[ *]`            = (0,3,0): covers non-marktile hosts (tugtile card
+        editor, web), where NO (0,3,0) competitor exists (palette + tab rules are all .marktile-* gated → only (0,2,0)).
+     • `.marktile-ed.tugtile-plain .tugtile-ed-rich .tg-line[ *]` = (0,4,0): clears marktile's (0,3,0) palette + tab rules.
+   .tugtile-plain sits on the editor mount (an ANCESTOR of .tugtile-ed-rich); .tg-line are direct children of it.
+   If you ever add a syntax rule at (0,4,0)+, or a new editor host that runs Plain WITHOUT .marktile-ed, Plain mode
+   silently stops neutralising (symptom: colours/sizes leak through) — fix it here. There is no test guarding this. */
+.tugtile-plain .tugtile-ed-rich .tg-line,
+.tugtile-plain .tugtile-ed-rich .tg-line *,
+.marktile-ed.tugtile-plain .tugtile-ed-rich .tg-line,
+.marktile-ed.tugtile-plain .tugtile-ed-rich .tg-line * {
+  font-size: 1em; font-weight: normal; font-style: normal;
+  text-decoration: none; color: var(--text-normal); background: transparent;
+  font-family: var(--font-monospace); line-height: inherit;   /* monospace = raw-source feel */
+  border: 0; padding-left: 0; margin: 0;
+}
 /* Lane header container */
 .tugtile__lane-title {
   flex: 1;
