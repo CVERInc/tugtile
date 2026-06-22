@@ -1775,10 +1775,8 @@ class BoardView extends ItemView {
   // Busy state (dragging, editing, adding, or renaming) → delays external reloads to prevent layout disruptions
   isBusy() {
     return !!(this._dragging
-      || this._editModalOpen   // Editing in modal: block external redraws, otherwise invalid tid will save content to the wrong card (C1)
-      || this.contentEl.querySelector('.tugtile__tile-edit')
-      || this.contentEl.querySelector('.tugtile__add-input')
-      || this.contentEl.querySelector('.tugtile__lane-rename'));
+      || this._editModalOpen   // Editing in the card editor: block external redraws, otherwise an invalid tid saves content to the wrong card (C1)
+      || this._promptBar);     // Rename / add-lane prompt bar open: a reload would empty the content and wipe it mid-edit
   }
   consumePendingReload() {
     if (!this._pendingReload || this.isBusy()) return;
@@ -1822,6 +1820,8 @@ class BoardView extends ItemView {
     root.empty();
     root.addClass('tugtile');
     if (!this.filePath) { root.createDiv({ cls: 'tugtile__empty', text: t('emptyNoFile') }); return; }
+    this._buildSearchBar(root);   // top-of-content search strip (first child; hidden unless .tugtile--searching), rebuilt each render
+    root.toggleClass('tugtile--searching', !!this._searchOpen);
     const file = this.app.vault.getAbstractFileByPath(this.filePath);
     if (!file) { root.createDiv({ cls: 'tugtile__empty', text: t('fileNotFound', this.filePath) }); return; }
 
@@ -2014,15 +2014,115 @@ class BoardView extends ItemView {
   }
 
   // Search via a Modal (iPad-safe; inline inputs misbehave there). ✓ applies, ✕ clears, and typing filters live (visible once the modal closes).
+  // Search is an in-content bar (not a Modal): reveal the strip the view renders at its top, taking over the
+  // control row. The bar is rebuilt every render (_buildSearchBar); here we just toggle visibility + focus.
   openSearch() {
-    new PromptModal(this.app, {
-      value: this._searchTerm || '',
-      placeholder: t('searchPlaceholder'),
-      icon: 'search',   // 🔍 leading icon in the field (search only)
+    this._closePromptBar();   // mutual exclusion — never two text bars stacked (that re-opens the keyboard black gap)
+    if (this._searchOpen) { this._focusSearch(); return; }   // already open (e.g. icon tapped again) → re-focus
+    this._searchOpen = true;
+    this.contentEl.addClass('tugtile--searching');
+    this.freezeBoard();   // AFTER the bar takes its space, BEFORE the keyboard opens: pin the board height so the
+                          // virtual keyboard can't collapse it into a black gap (same fix the old search Modal used)
+    if (this._searchInp) this._searchInp.setText(this._searchTerm || '');
+    this._focusSearch();
+    this._armBarDismiss();
+    this.refreshSearchIcon();
+  }
+  _focusSearch() { this._focusSelect(this._searchInp); }
+  _focusSelect(inp) {
+    if (!inp) return;
+    setTimeout(() => {   // contenteditable has no .select(); focus then range-select its contents
+      inp.focus();
+      const r = document.createRange(); r.selectNodeContents(inp);
+      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+    }, 0);
+  }
+  closeSearch(clear) {
+    this._searchOpen = false;
+    this.contentEl.removeClass('tugtile--searching');
+    this.unfreezeBoard();   // release the pinned height so the board reflows back to normal
+    const inp = this._searchInp;
+    if (clear) { this._searchTerm = ''; if (inp) inp.setText(''); this.applySearch(); }   // ✕ / Escape: drop the filter
+    if (inp) inp.blur();
+    this.refreshSearchIcon();
+  }
+  // Shared row for every in-content text bar (search · rename · add-lane): the rounded field with an optional
+  // leading icon, a plaintext-only contenteditable (dodges Obsidian's input chrome, CJK-safe), and ✕ / ✓ buttons.
+  // The taps preventDefault to keep focus → the virtual keyboard stays open → single-tap action (editor pattern).
+  // onFinish(true) = submit (✓ / Enter); onFinish(false) = cancel (✕ / Escape). Returns the input element.
+  _buildPromptRow(container, opts) {
+    const row = container.createDiv({ cls: 'tugtile-prompt-row' });
+    const field = row.createDiv({ cls: 'tugtile-prompt-field' });
+    if (opts.icon) setIcon(field.createSpan({ cls: 'tugtile-prompt-fieldicon' }), opts.icon);
+    const inp = field.createDiv({ cls: 'tugtile-prompt-input', attr: { contenteditable: 'plaintext-only', role: opts.role || 'textbox', spellcheck: 'false' } });
+    inp.setText(opts.value || '');
+    if (opts.placeholder) inp.dataset.placeholder = opts.placeholder;
+    if (opts.onInput) inp.addEventListener('input', () => opts.onInput(inp.textContent));
+    const tap = (el, fn) => {
+      el.addEventListener('mousedown', (e) => e.preventDefault());
+      el.addEventListener('pointerdown', (e) => e.preventDefault());
+      el.addEventListener('touchstart', (e) => { e.preventDefault(); fn(); }, { passive: false });
+      el.addEventListener('click', fn);
+    };
+    const x = row.createEl('button', { cls: 'tugtile-iconbtn tugtile-prompt-x' }); setIcon(x.createSpan(), 'x'); x.setAttribute('aria-label', t('cancel'));
+    const ok = row.createEl('button', { cls: 'tugtile-iconbtn tugtile-prompt-ok' }); setIcon(ok.createSpan(), 'check'); ok.setAttribute('aria-label', t('save'));
+    tap(x, () => opts.onFinish(false));
+    tap(ok, () => opts.onFinish(true));
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !(e.isComposing || e.keyCode === 229)) { e.preventDefault(); opts.onFinish(true); }
+      else if (e.key === 'Escape') { e.preventDefault(); opts.onFinish(false); }
+    });
+    return inp;
+  }
+  // The in-content search bar. Rebuilt each render (root.empty destroys it), hidden until .tugtile--searching.
+  _buildSearchBar(root) {
+    const bar = root.createDiv({ cls: 'tugtile-searchbar' });
+    this._searchInp = this._buildPromptRow(bar, {
+      value: this._searchTerm || '', placeholder: t('searchPlaceholder'), icon: 'search', role: 'searchbox',
       onInput: (v) => { this._searchTerm = v; this.applySearch(); },
-      onSubmit: (v) => { this._searchTerm = (v || '').trim(); this.applySearch(); },
-      onCancel: () => { this._searchTerm = ''; this.applySearch(); },
-    }).open();
+      onFinish: (save) => this.closeSearch(!save),   // ✓/Enter keep the filter; ✕/Escape clear it
+    });
+    return bar;
+  }
+  // Transient top prompt bar for rename / add-lane (replaces the old PromptModal). Same proven recipe as search —
+  // a top strip + freezeBoard — so the iPad keyboard can't collapse the board into a black gap (the documented
+  // reason these two were Modals). One-shot: built on demand, removed on finish; isBusy() blocks external reloads
+  // while it's open so it can't be wiped mid-edit.
+  _openPromptBar(opts) {
+    if (this._searchOpen) this.closeSearch(false);   // mutual exclusion — keep any active filter, just drop the bar
+    this._closePromptBar();
+    const root = this.contentEl;
+    const bar = root.createDiv({ cls: 'tugtile-promptbar' });
+    root.prepend(bar);   // top of content (above the board / control strip)
+    root.addClass('tugtile--prompting');
+    this._promptBar = bar;
+    const inp = this._buildPromptRow(bar, {
+      value: opts.value || '', placeholder: opts.placeholder, icon: opts.icon || 'pencil',
+      onFinish: (save) => { const v = inp.textContent; this._closePromptBar(); if (save && opts.onSubmit) opts.onSubmit(v); },
+    });
+    this.freezeBoard();
+    this._focusSelect(inp);
+    this._armBarDismiss();
+  }
+  _closePromptBar() {
+    if (this._promptBar) { this._promptBar.remove(); this._promptBar = null; }
+    this.contentEl.removeClass('tugtile--prompting');
+    this.unfreezeBoard();
+  }
+  // Tap/click anywhere off an open text bar dismisses it (search keeps its filter; a rename/add-lane prompt is
+  // cancelled — no submit). Registered once on first use (auto-removed on view unload). Capture phase so it runs
+  // before the tapped element's own handler, which also guarantees one bar at a time (opening another closes this).
+  _armBarDismiss() {
+    if (this._barDismissArmed) return;
+    this._barDismissArmed = true;
+    this.registerDomEvent(document, 'pointerdown', (e) => this._maybeDismissBar(e), true);
+  }
+  _maybeDismissBar(e) {
+    if (this._promptBar) { if (!this._promptBar.contains(e.target)) this._closePromptBar(); return; }
+    if (this._searchOpen) {
+      const bar = this.contentEl.querySelector('.tugtile-searchbar');
+      if (bar && !bar.contains(e.target)) this.closeSearch(false);
+    }
   }
   applySearch() {
     const term = (this._searchTerm || '').toLowerCase();
@@ -2678,27 +2778,13 @@ class BoardView extends ItemView {
     this.renumber();
     this.startEditTile(el, true);   // fresh: true (discarded only if cancelled untouched; pressing Save keeps it, blank or not)
   }
-  addTile(listEl, text) {
-    text = String(text).replace(/\s+$/, '');
-    if (!text) return;
-    const el = this.makeTileEl(listEl, { raw: this.buildRaw(text, ' '), text, check: ' ' });
-    if (this.prependNewCards && listEl.firstChild) listEl.insertBefore(el, listEl.firstChild);   // Add new card to the top of the lane
-    this.persist();
-    this.renumber();
-  }
-  // Submit action on Enter (Mobile: Enter always adds newline, submissions use action button to match kanban)
+  // Host callback for the editor core (editor-core.js calls host.isSubmitKey): does this keydown commit the card?
+  // Mobile: Enter always inserts a newline (commit via the ✓ button); desktop honours the enter-submits setting.
   isSubmitKey(e) {
     if ((e.isComposing || e.keyCode === 229) || e.key !== 'Enter') return false;
     if (Platform.isMobile) return false;
     return this.enterSubmits ? !e.shiftKey : (e.shiftKey || e.metaKey || e.ctrlKey);
   }
-  // Mobile-only submit button (desktop relies on Enter hotkeys)
-  addMobileSubmit(container, onSubmit) {
-    if (!Platform.isMobile) return;
-    const row = container.createDiv({ cls: 'tugtile__edit-actions' });
-    row.createEl('button', { cls: 'tugtile__add-ok', text: t('mobileSubmit') }).onclick = (e) => { e.preventDefault(); onSubmit(); };
-  }
-
   // ---- Card Editing: Modal Focus (centered large card, darkened background, virtual keyboard pushes modal viewport, saves on close) ----
   startEditTile(tileEl, fresh) {
     if (this._lockGuard()) return;
@@ -2767,8 +2853,7 @@ class BoardView extends ItemView {
   showAddColumn(addColEl) {
     if (this._lockGuard()) return;
     const board = addColEl.parentElement;
-    // Always use a Modal (same reason as renaming)
-    new PromptModal(this.app, { placeholder: t('addLanePlaceholder'), onSubmit: (val) => { const name = val.trim(); if (name) this.addColumn(board, name); this.consumePendingReload(); } }).open();
+    this._openPromptBar({ placeholder: t('addLanePlaceholder'), icon: 'plus', onSubmit: (val) => { const name = val.trim(); if (name) this.addColumn(board, name); this.consumePendingReload(); } });
   }
   addColumn(board, name) {
     const laneEl = this.makeLane(board, { header: '## ' + name, title: name, tiles: [] });
@@ -2780,14 +2865,13 @@ class BoardView extends ItemView {
   startRenameColumn(laneEl, titleEl) {
     if (this._lockGuard()) return;
     const cur = titleEl.textContent;
-    // Always use a Modal (ensures consistent UI; also, Platform.isMobile is unreliable on iPads, where inline editing can trigger iOS scroll behaviors revealing black backing)
-    new PromptModal(this.app, { value: cur, placeholder: t('addLanePlaceholder'), onSubmit: (val) => {
+    this._openPromptBar({ value: cur, placeholder: t('addLanePlaceholder'), icon: 'pencil', onSubmit: (val) => {
       const newTitle = (val.trim()) || cur;
       titleEl.textContent = newTitle;
       const tv = laneEl.querySelector('.tugtile__lane-title-v'); if (tv) tv.textContent = newTitle;   // Keep the vertical clone in sync
       if (newTitle !== cur) { const max = laneEl.dataset.wip; laneEl.dataset.header = '## ' + newTitle + (max ? ' (' + max + ')' : ''); this.persist(); }   // Retain WIP limit
       this.consumePendingReload();
-    } }).open();
+    } });
   }
   deleteColumn(laneEl) {
     const n = laneEl.querySelectorAll('.tugtile__tile').length;
@@ -3224,65 +3308,6 @@ class BoardSettingsModal extends Modal {
     tog(t('setArchiveWithDate'), '', 'archive-with-date', S.archiveWithDate);
   }
 }
-// Compact input Modal for mobile (rename / create lane): [input] Cancel / Save. Reuses the virtual keyboard workaround from card editor (preventDefault retains focus → single-tap action) and bounce effect. Desktop remains inline.
-class PromptModal extends Modal {
-  constructor(app, opts) { super(app); this._opts = opts || {}; }
-  onOpen() {
-    this.modalEl.addClass('tugtile-prompt-modal');
-    if (this.containerEl) this.containerEl.addClass('tugtile-prompt-host');   // Direct container target for the backdrop/alignment rules (replaces .modal-container:has(.tugtile-prompt-modal) — no :has() invalidation)
-    this._frozenView = this.app.workspace.getActiveViewOfType(BoardView);
-    if (this._frozenView) this._frozenView.freezeBoard();   // Pin the board height so the virtual keyboard doesn't collapse it into a black gap behind the modal (same fix as the tile editor)
-    const { contentEl } = this;
-    contentEl.empty(); contentEl.addClass('tugtile-prompt');
-    const row = contentEl.createDiv({ cls: 'tugtile-prompt-row' });
-    const field = row.createDiv({ cls: 'tugtile-prompt-field' });   // The rounded input field (icon + input live inside it)
-    if (this._opts.icon) setIcon(field.createSpan({ cls: 'tugtile-prompt-fieldicon' }), this._opts.icon);   // Leading icon (e.g. search) — only when the caller asks for it (search, not rename/add-lane)
-    // Our OWN single-line contenteditable (not a native <input>) so Obsidian's input chrome never touches it —
-    // zero style overrides needed. plaintext-only keeps IME/paste clean (CJK-safe). Read the text via .textContent.
-    const inp = field.createDiv({ cls: 'tugtile-prompt-input', attr: { contenteditable: 'plaintext-only', role: 'searchbox', spellcheck: 'false' } });
-    inp.setText(this._opts.value || '');
-    if (this._opts.placeholder) inp.dataset.placeholder = this._opts.placeholder;
-    this._inp = inp;
-    if (this._opts.onInput) inp.addEventListener('input', () => this._opts.onInput(inp.textContent));   // Live callback (e.g. search filters as you type)
-    const tap = (el, fn) => {   // Focus is not lost → virtual keyboard stays open → the tap action is registered immediately (same keyboard workaround as tile editor)
-      el.addEventListener('mousedown', (e) => e.preventDefault());
-      el.addEventListener('pointerdown', (e) => e.preventDefault());
-      el.addEventListener('touchstart', (e) => { e.preventDefault(); fn(); }, { passive: false });
-      el.addEventListener('click', fn);
-    };
-    const x = row.createEl('button', { cls: 'tugtile-iconbtn tugtile-prompt-x' }); setIcon(x.createSpan(), 'x'); x.setAttribute('aria-label', t('cancel'));   // span child (iPad svg-in-button fix)
-    const ok = row.createEl('button', { cls: 'tugtile-iconbtn tugtile-prompt-ok' }); setIcon(ok.createSpan(), 'check'); ok.setAttribute('aria-label', t('save'));
-    tap(x, () => this._finish(false));
-    tap(ok, () => this._finish(true));
-    inp.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !(e.isComposing || e.keyCode === 229)) { e.preventDefault(); this._finish(true); }
-      else if (e.key === 'Escape') { e.preventDefault(); this._finish(false); }
-    });
-    setTimeout(() => {   // Focus + select-all (contenteditable has no .select(), so range over its contents)
-      inp.focus();
-      const r = document.createRange(); r.selectNodeContents(inp);
-      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
-    }, 0);
-  }
-  _finish(save) {
-    if (this._done) return; this._done = true;
-    const v = this._inp ? this._inp.textContent : '';
-    this._forceClose = true; this.close();
-    if (save) { if (this._opts.onSubmit) this._opts.onSubmit(v); }
-    else if (this._opts.onCancel) this._opts.onCancel();
-  }
-  close() {
-    if (this._forceClose) { this._animateClose(); return; }
-    this._finish(false);   // Native close / backdrop click / Escape → Cancel
-  }
-  _animateClose() {
-    if (this._closing) { return; } this._closing = true;
-    this.modalEl.addClass('tugtile-ed-closing');
-    setTimeout(() => super.close(), 280);
-  }
-  onClose() { if (this._frozenView) this._frozenView.unfreezeBoard(); this.contentEl.empty(); }
-}
-
 module.exports = class TugtilePlugin extends Plugin {
   // Mobile: the bottom navbar's back/forward are dead inside a board (no in-board history), and its search is
   // vault-wide. While a tugtile board is the active view, take them over — back→undo, forward→redo,
