@@ -32,12 +32,19 @@ whole table was easier than patching someone else's. Written from scratch (clean
 - **Never lose a card** — built-in undo / redo, a backup before the first write, and
   overwrite protection: if the file changes elsewhere, tugtile reloads instead of
   clobbering it. (Backed by a data-safety test suite.)
+- **Hands never leave the keyboard** — arrow keys tug a tile within or across lanes;
+  Space / A / D check, archive, or delete it; Tab to a lane header and arrow-reorder the
+  whole lane; new / rename lane are rebindable commands. Sort a whole board without
+  reaching for the mouse.
 - **An editor that survives phones** — two-row toolbar, virtual-keyboard-aware layout on
   iOS/iPad; tug lanes & tiles to reorder, dates/times, tags, stash (archive).
 - **Your data stays Markdown** — human-readable, diff-friendly, portable. Board and
   Table views over the same note, plus a raw-editor button when you want the text itself.
-- **CJK-first, concretely** — re-highlighting waits while your IME is composing, so CJK
-  input is never interrupted; `#tags` accept CJK; sorting is locale-aware.
+- **Your language isn't an edge case** — every keyboard surface (the editor, card submit,
+  *and* the board's move keys) pauses while your IME is composing, so a Chinese / Japanese
+  / Korean candidate-confirm is never mistaken for a shortcut; card collapse is
+  width-aware; `#tags` accept CJK. The six CJK guarantees — and how each is verified —
+  live in [CJK.md](./CJK.md).
 - **No network, no telemetry** — your boards never leave your vault.
 
 ### Install
@@ -83,12 +90,17 @@ tugtile の前身は、obsidian-kanban のために書いた plugin の山（plu
 
 - **カードを失わない**：取り消し／やり直しを内蔵、最初の書き込み前にバックアップ、
   ファイルが外部で変わったら上書きせず再読み込み。（データ安全テストで保証）
+- **手はキーボードから離れない**：矢印キーでタイルを同じ列／隣の列へ動かし、Space／A／D
+  で完了・アーカイブ・削除、Tab で列見出しへ移って矢印キーで列ごと並べ替え。列の新規作成
+  ／名前変更は割り当て可能なコマンド。ボード一枚、マウスに触れずに片づきます。
 - **スマホで生き残るエディタ**：2 段ツールバー、iOS／iPad の仮想キーボードに追従する
   レイアウト。列もタイルもつまんで並べ替え、日付／時刻、タグ、アーカイブ。
 - **データはずっと Markdown**：人間が読めて、diff しやすく、持ち運べます。同じノートを
   ボード／表の 2 ビューで。テキストそのものを触りたいときは raw エディタボタンも。
-- **CJK ファースト、具体的に**：IME の変換中は再ハイライトを待機し、日本語入力を決して
-  中断しません。`#タグ` も CJK 対応、並べ替えはロケールを認識します。
+- **あなたの言語は、例外じゃない**：すべてのキーボード操作（エディタ、カード送信、そして
+  ボードの移動キー）は IME の変換中は待機するので、日本語・中国語・韓国語の変換確定が
+  ショートカットと取り違えられることはありません。長いカードの折りたたみは文字幅を考慮し、
+  `#タグ` も CJK 対応。6 つの CJK 保証と、その検証方法は [CJK.md](./CJK.md) に。
 - **ネットワークなし、テレメトリなし**：ボードが vault の外に出ることはありません。
 
 ### インストール
@@ -134,13 +146,18 @@ tugtile은 원래 obsidian-kanban을 위해 쓴 플러그인들(플러그인의 
 
 - **카드를 잃지 않습니다**: 실행 취소/다시 실행 내장, 첫 쓰기 전 백업, 파일이 외부에서
   바뀌면 덮어쓰지 않고 다시 읽기.（데이터 안전 테스트로 보장）
+- **손이 키보드를 떠나지 않습니다**: 화살표 키로 타일을 같은 열이나 옆 열로 옮기고,
+  Space／A／D로 완료・보관・삭제, Tab으로 열 머리글로 이동해 화살표 키로 열 전체를 재정렬.
+  열 추가／이름 변경은 단축키를 지정할 수 있는 명령입니다. 보드 하나를 마우스 없이 정리합니다.
 - **휴대폰에서 살아남는 에디터**: 2단 툴바, iOS/iPad 가상 키보드를 따라가는 레이아웃,
   열과 타일을 집어서 정렬, 날짜/시간, 태그, 보관함.
 - **데이터는 언제나 Markdown**: 사람이 읽을 수 있고, diff 친화적이며, 어디로든 가져갈 수
   있습니다. 같은 노트를 보드/표 두 가지 뷰로, 텍스트를 직접 만지고 싶을 때는 raw 에디터
   버튼도 있습니다.
-- **CJK 우선, 구체적으로**: IME 조합 중에는 재하이라이트를 멈춰 한국어 입력이 끊기지
-  않습니다. `#태그`도 CJK 지원, 정렬은 로케일 인식 비교를 사용합니다.
+- **여러분의 언어는 예외가 아닙니다**: 모든 키보드 입력(에디터, 카드 전송, 그리고 보드의
+  이동 키)이 IME 조합 중에는 대기하므로, 한국어・중국어・일본어의 변환 확정이 단축키로
+  잘못 인식되지 않습니다. 긴 카드 접기는 글자 너비를 고려하고, `#태그`도 CJK 지원. 여섯
+  가지 CJK 보증과 각각의 검증 방법은 [CJK.md](./CJK.md)에 있습니다.
 - **네트워크 없음, 텔레메트리 없음**: 보드는 vault 밖으로 나가지 않습니다.
 
 ### 설치
@@ -182,12 +199,16 @@ tugtile 的前身正是幫 obsidian-kanban 寫的一堆 plugin（plugin 的 plug
 
 - **絕不掉牌**：內建復原／重做、首次寫入前先備份、外部改檔時自動重載而非覆寫
   （由資料安全測試套件守護）。
+- **雙手永遠在鍵盤上**：方向鍵把一張牌拖到同列或隔壁列，`Space`／`A`／`D` 勾選／封存／
+  刪牌，`Tab` 到牌列標題再用方向鍵搬整條牌列；新增／改名牌列是可自綁熱鍵的指令。整桌牌
+  理完，不用碰滑鼠。
 - **在手機上活得下來的編輯器**：雙排工具列、iOS／iPad 虛擬鍵盤自動避讓；牌列與牌都能
   拖曳排序，加上日期／時間、標籤、收牌（牌庫）。
 - **資料永遠是 Markdown**：人類可讀、好 diff、帶得走。同一份筆記有牌桌／牌表兩種檢視，
   想直接碰文字時還有 raw 編輯器按鈕。
-- **CJK 優先，而且講得出細節**：IME 組字期間暫停重新上色，中文輸入絕不被打斷；`#標籤`
-  支援 CJK；排序使用 locale 感知比較。
+- **你的語言，不是 edge case**：每一個鍵盤入口（編輯器、送出、連同牌桌的搬牌鍵）都在
+  IME 組字期間讓位，中日韓的選字確認絕不被誤判成快捷鍵；長牌收合是寬度感知的；`#標籤`
+  支援 CJK。六項 CJK 保證與各自的驗證方式都寫在 [CJK.md](./CJK.md)。
 - **不連網、零遙測**：你的牌桌永遠不會離開 vault。
 
 ### 安裝
