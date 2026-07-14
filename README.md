@@ -1,6 +1,6 @@
 # tugtile
 
-[English](#english) · [日本語](#日本語) · [한국어](#한국어) · [繁體中文](#繁體中文)
+[English](https://github.com/CVERInc/tugtile#english) · [日本語](https://github.com/CVERInc/tugtile#日本語) · [한국어](https://github.com/CVERInc/tugtile#한국어) · [繁體中文](https://github.com/CVERInc/tugtile#繁體中文)
 
 ---
 
