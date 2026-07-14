@@ -44,14 +44,14 @@ whole table was easier than patching someone else's. Written from scratch (clean
   *and* the board's move keys) pauses while your IME is composing, so a Chinese / Japanese
   / Korean candidate-confirm is never mistaken for a shortcut; card collapse is
   width-aware; `#tags` accept CJK. The six CJK guarantees — and how each is verified —
-  live in [CJK.md](./CJK.md).
+  live in [CJK.md](https://github.com/CVERInc/tugtile/blob/main/CJK.md).
 - **No network, no telemetry** — your boards never leave your vault.
 
 ### Install
 
 - **Community plugins (recommended):** in Obsidian, open Settings → Community plugins →
   Browse, search for **tugtile**, then Install and Enable.
-- **Manual:** from the [latest release](../../releases/latest), download `main.js`,
+- **Manual:** from the [latest release](https://github.com/CVERInc/tugtile/releases/latest), download `main.js`,
   `manifest.json`, and `styles.css` into your vault's `.obsidian/plugins/tugtile/` folder,
   then enable **tugtile** in Settings → Community plugins.
 - **[BRAT](https://github.com/TfTHacker/obsidian42-brat) (beta builds):** add `CVERInc/tugtile`.
@@ -100,14 +100,14 @@ tugtile の前身は、obsidian-kanban のために書いた plugin の山（plu
 - **あなたの言語は、例外じゃない**：すべてのキーボード操作（エディタ、カード送信、そして
   ボードの移動キー）は IME の変換中は待機するので、日本語・中国語・韓国語の変換確定が
   ショートカットと取り違えられることはありません。長いカードの折りたたみは文字幅を考慮し、
-  `#タグ` も CJK 対応。6 つの CJK 保証と、その検証方法は [CJK.md](./CJK.md) に。
+  `#タグ` も CJK 対応。6 つの CJK 保証と、その検証方法は [CJK.md](https://github.com/CVERInc/tugtile/blob/main/CJK.md) に。
 - **ネットワークなし、テレメトリなし**：ボードが vault の外に出ることはありません。
 
 ### インストール
 
 - **コミュニティプラグイン（推奨）：** 設定 → コミュニティプラグイン → 「閲覧」で
   **tugtile** を検索し、インストールして有効化。
-- **手動：** [最新リリース](../../releases/latest) から `main.js`・`manifest.json`・
+- **手動：** [最新リリース](https://github.com/CVERInc/tugtile/releases/latest) から `main.js`・`manifest.json`・
   `styles.css` を vault の `.obsidian/plugins/tugtile/` に置き、設定 → コミュニティプラグイン
   で **tugtile** を有効化。
 - **[BRAT](https://github.com/TfTHacker/obsidian42-brat)（ベータ版）：** `CVERInc/tugtile` を追加。
@@ -157,14 +157,14 @@ tugtile은 원래 obsidian-kanban을 위해 쓴 플러그인들(플러그인의 
 - **여러분의 언어는 예외가 아닙니다**: 모든 키보드 입력(에디터, 카드 전송, 그리고 보드의
   이동 키)이 IME 조합 중에는 대기하므로, 한국어・중국어・일본어의 변환 확정이 단축키로
   잘못 인식되지 않습니다. 긴 카드 접기는 글자 너비를 고려하고, `#태그`도 CJK 지원. 여섯
-  가지 CJK 보증과 각각의 검증 방법은 [CJK.md](./CJK.md)에 있습니다.
+  가지 CJK 보증과 각각의 검증 방법은 [CJK.md](https://github.com/CVERInc/tugtile/blob/main/CJK.md)에 있습니다.
 - **네트워크 없음, 텔레메트리 없음**: 보드는 vault 밖으로 나가지 않습니다.
 
 ### 설치
 
 - **커뮤니티 플러그인(권장):** 설정 → 커뮤니티 플러그인 → 「탐색」에서 **tugtile**을
   검색해 설치하고 활성화하세요.
-- **수동:** [최신 릴리스](../../releases/latest)에서 `main.js`, `manifest.json`,
+- **수동:** [최신 릴리스](https://github.com/CVERInc/tugtile/releases/latest)에서 `main.js`, `manifest.json`,
   `styles.css`를 vault의 `.obsidian/plugins/tugtile/`에 넣고, 설정 → 커뮤니티 플러그인에서
   **tugtile**을 활성화하세요.
 - **[BRAT](https://github.com/TfTHacker/obsidian42-brat)(베타 빌드):** `CVERInc/tugtile` 추가.
@@ -208,14 +208,14 @@ tugtile 的前身正是幫 obsidian-kanban 寫的一堆 plugin（plugin 的 plug
   想直接碰文字時還有 raw 編輯器按鈕。
 - **你的語言，不是 edge case**：每一個鍵盤入口（編輯器、送出、連同牌桌的搬牌鍵）都在
   IME 組字期間讓位，中日韓的選字確認絕不被誤判成快捷鍵；長牌收合是寬度感知的；`#標籤`
-  支援 CJK。六項 CJK 保證與各自的驗證方式都寫在 [CJK.md](./CJK.md)。
+  支援 CJK。六項 CJK 保證與各自的驗證方式都寫在 [CJK.md](https://github.com/CVERInc/tugtile/blob/main/CJK.md)。
 - **不連網、零遙測**：你的牌桌永遠不會離開 vault。
 
 ### 安裝
 
 - **社群外掛（推薦）：** 在 Obsidian 開 設定 → 社群外掛 → 瀏覽，搜尋 **tugtile**，
   安裝後啟用。
-- **手動：** 從[最新 release](../../releases/latest) 下載 `main.js`、`manifest.json`、
+- **手動：** 從[最新 release](https://github.com/CVERInc/tugtile/releases/latest) 下載 `main.js`、`manifest.json`、
   `styles.css` 放進 vault 的 `.obsidian/plugins/tugtile/`，然後在 設定 → 社群外掛 啟用
   **tugtile**。
 - **[BRAT](https://github.com/TfTHacker/obsidian42-brat)（beta 版）：** 加入 `CVERInc/tugtile`。
